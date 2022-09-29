@@ -159,6 +159,7 @@
   Standard C libraries
 */
 #include <math.h>
+
 #include "Lander_Control.h"
 
 double LAST_VELOCITY_X=0;
@@ -261,6 +262,43 @@ double Robust_Angle(void)
     }
   }
   return Angle();
+}
+
+void Set_Thrusters(double main, double left, double right)
+{
+ /*
+   Robustly sets the power for the Main, Left, and Right thrusters as if the
+   lander is upright (Angle()=0). If any thrusters fails, then this function
+   will automatically rotate the lander appropriately to use the remaining
+   thrusters to move the lander in the same direction and power (at most the
+   backup thruster's max acceleration) as if all 3 thrusters are working.
+
+   if main, left, or right is -10.0 then do not change the current power of the thruster.
+*/
+ // All thrusters work so proceed normally
+ if (MT_OK + RT_OK + LT_OK == 3) {
+  // if (Angle()>1&&Angle()<359)
+  // {
+  // //  Main_Thruster(0);
+  // //  Left_Thruster(0);
+  // //  Right_Thruster(0);
+  //  if (Angle()>=180) Rotate(360-Angle());
+  //  else Rotate(-Angle());
+  //  return;
+  // }
+  // printf("all thrusters ok, setting power: %f, %f, %f \n", main, left, right);
+  if (main != -10.0) {Main_Thruster(main);}
+  if (left != -10.0) {Left_Thruster(left);}
+  if (right != -10.0) {Right_Thruster(right);}
+ }
+ else if (MT_OK + RT_OK + LT_OK == 2) {
+  // Only 2 thrusters working
+  // TODO: implement
+ }
+ else {
+  // Only 1 thruster working
+  // TODO: implement
+ }
 }
 
 void Lander_Control(void)
@@ -368,41 +406,57 @@ void Lander_Control(void)
   return;
  }
 
+ double main, left, right = -10.0;
+
  // Module is oriented properly, check for horizontal position
  // and set thrusters appropriately.
  if (Robust_Position_X()>PLAT_X)
  {
   // Lander is to the LEFT of the landing platform, use Right thrusters to move
   // lander to the left.
-  Left_Thruster(0);	// Make sure we're not fighting ourselves here!
-  if (Velocity_X()>(-VXlim)) Right_Thruster((VXlim+fmin(0,Velocity_X()))/VXlim);
+  left = 0.0;	// Make sure we're not fighting ourselves here!
+  // Set_Thrusters(main, left, right);
+  if (Velocity_X()>(-VXlim))
+  {
+    right = (VXlim+fmin(0,Velocity_X()))/VXlim;
+    // Set_Thrusters(main, left, right);
+  }
   else
   {
    // Exceeded velocity limit, brake
-   Right_Thruster(0);
-   Left_Thruster(fabs(VXlim-Velocity_X()));
+   right = 0.0;
+   left = fabs(VXlim-Velocity_X());
+  //  Set_Thrusters(main, left, right);
   }
  }
  else
  {
   // Lander is to the RIGHT of the landing platform, opposite from above
-  Right_Thruster(0);
-  if (Velocity_X()<VXlim) Left_Thruster((VXlim-fmax(0,Velocity_X()))/VXlim);
+  right = 0.0;
+  // Set_Thrusters(main, left, right);
+  if (Velocity_X()<VXlim)
+  {
+   left = (VXlim-fmax(0,Velocity_X()))/VXlim;
+  //  Set_Thrusters(main, left, right);
+  }
   else
   {
-   Left_Thruster(0);
-   Right_Thruster(fabs(VXlim-Velocity_X()));
+   left = 0.0;
+   right = fabs(VXlim-Velocity_X());
+  //  Set_Thrusters(main, left, right);
   }
  }
 
  // Vertical adjustments. Basically, keep the module below the limit for
  // vertical velocity and allow for continuous descent. We trust
  // Safety_Override() to save us from crashing with the ground.
- if (Velocity_Y()<VYlim) Main_Thruster(1.0);
- else Main_Thruster(0);
 
+ if (Velocity_Y()<VYlim) {main = 1.0;}
+ else main = 0.0;
  COUNTER++;
  Set_Data();
+ Set_Thrusters(main, left, right);
+
 }
 
 void Safety_Override(void)
@@ -474,6 +528,8 @@ void Safety_Override(void)
  // Determine whether we're too close for comfort. There is a reason
  // to have this distance limit modulated by horizontal speed...
  // what is it?
+ double main, left, right = -10.0;
+
  if (dmin<DistLimit*fmax(.25,fmin(fabs(Velocity_X())/5.0,1)))
  { // Too close to a surface in the horizontal direction
   if (Robust_Angle()>1&&Robust_Angle()<359)
@@ -484,13 +540,15 @@ void Safety_Override(void)
   }
 
   if (Velocity_X()>0){
-   Right_Thruster(1.0);
-   Left_Thruster(0.0);
+   right = 1.0;
+   left = 0.0;
+   Set_Thrusters(main, left, right);
   }
   else
   {
-   Left_Thruster(1.0);
-   Right_Thruster(0.0);
+   left = 1.0;
+   right = 0.0;
+   Set_Thrusters(main, left, right);
   }
  }
 
@@ -517,11 +575,13 @@ void Safety_Override(void)
    return;
   }
   if (Velocity_Y()>2.0){
-   Main_Thruster(0.0);
+   main = 0.0;
   }
   else
   {
-   Main_Thruster(1.0);
+   main = 1.0;
   }
  }
+
+ Set_Thrusters(main, left, right);
 }
