@@ -159,8 +159,11 @@
   Standard C libraries
 */
 #include <math.h>
+// #include <stdio.h>
 
 #include "Lander_Control.h"
+
+// double desired_angle = 0.0;
 
 void Set_Thrusters(double main, double left, double right)
 {
@@ -171,14 +174,23 @@ void Set_Thrusters(double main, double left, double right)
    thrusters to move the lander in the same direction and power (at most the
    backup thruster's max acceleration) as if all 3 thrusters are working.
 
-   main, left, right is between [0,1] or is negative. A negative value means
-   do not change the current power of the thruster.
+   if main, left, or right is -10.0 then do not change the current power of the thruster.
 */
  // All thrusters work so proceed normally
  if (MT_OK + RT_OK + LT_OK == 3) {
-  if (main >= 0.0) {Main_Thruster(main);}
-  if (left >= 0.0) {Left_Thruster(left);}
-  if (right >= 0.0) {Right_Thruster(right);}
+  // if (Angle()>1&&Angle()<359)
+  // {
+  // //  Main_Thruster(0);
+  // //  Left_Thruster(0);
+  // //  Right_Thruster(0);
+  //  if (Angle()>=180) Rotate(360-Angle());
+  //  else Rotate(-Angle());
+  //  return;
+  // }
+  // printf("all thrusters ok, setting power: %f, %f, %f \n", main, left, right);
+  if (main != -10.0) {Main_Thruster(main);}
+  if (left != -10.0) {Left_Thruster(left);}
+  if (right != -10.0) {Right_Thruster(right);}
  }
  else if (MT_OK + RT_OK + LT_OK == 2) {
   // Only 2 thrusters working
@@ -280,7 +292,7 @@ void Lander_Control(void)
   return;
  }
 
- double main, left, right = -1.0;
+ double main, left, right = -10.0;
 
  // Module is oriented properly, check for horizontal position
  // and set thrusters appropriately.
@@ -289,35 +301,35 @@ void Lander_Control(void)
   // Lander is to the LEFT of the landing platform, use Right thrusters to move
   // lander to the left.
   left = 0.0;	// Make sure we're not fighting ourselves here!
-  Set_Thrusters(main, left, right);
+  // Set_Thrusters(main, left, right);
   if (Velocity_X()>(-VXlim))
   {
     right = (VXlim+fmin(0,Velocity_X()))/VXlim;
-    Set_Thrusters(main, left, right);
+    // Set_Thrusters(main, left, right);
   }
   else
   {
    // Exceeded velocity limit, brake
    right = 0.0;
    left = fabs(VXlim-Velocity_X());
-   Set_Thrusters(main, left, right);
+  //  Set_Thrusters(main, left, right);
   }
  }
  else
  {
   // Lander is to the RIGHT of the landing platform, opposite from above
   right = 0.0;
-  Set_Thrusters(main, left, right);
+  // Set_Thrusters(main, left, right);
   if (Velocity_X()<VXlim)
   {
    left = (VXlim-fmax(0,Velocity_X()))/VXlim;
-   Set_Thrusters(main, left, right);
+  //  Set_Thrusters(main, left, right);
   }
   else
   {
    left = 0.0;
    right = fabs(VXlim-Velocity_X());
-   Set_Thrusters(main, left, right);
+  //  Set_Thrusters(main, left, right);
   }
  }
 
@@ -399,7 +411,7 @@ void Safety_Override(void)
  // Determine whether we're too close for comfort. There is a reason
  // to have this distance limit modulated by horizontal speed...
  // what is it?
- double main, left, right = -1.0;
+ double main, left, right = -10.0;
 
  if (dmin<DistLimit*fmax(.25,fmin(fabs(Velocity_X())/5.0,1)))
  { // Too close to a surface in the horizontal direction
