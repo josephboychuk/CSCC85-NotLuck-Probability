@@ -299,6 +299,7 @@ void Set_Thrusters(double main, double left, double right)
   // Only 1 thruster working
   // TODO: implement
  }
+}
 
 void Lander_Control(void)
 {
