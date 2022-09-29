@@ -233,57 +233,68 @@ void Lander_Control(void)
  // Ensure we will be OVER the platform when we land
  if (fabs(PLAT_X-Position_X())/fabs(Velocity_X())>1.25*fabs(PLAT_Y-Position_Y())/fabs(Velocity_Y())) VYlim=0;
 
- // IMPORTANT NOTE: The code below assumes all components working
- // properly. IT MAY OR MAY NOT BE USEFUL TO YOU when components
- // fail. More likely, you will need a set of case-based code
- // chunks, each of which works under particular failure conditions.
+ int working = MT_OK + LT_OK + RT_OK;
+ if (working == 3) {
+  // IMPORTANT NOTE: The code below assumes all components working
+  // properly. IT MAY OR MAY NOT BE USEFUL TO YOU when components
+  // fail. More likely, you will need a set of case-based code
+  // chunks, each of which works under particular failure conditions.
 
- // Check for rotation away from zero degrees - Rotate first,
- // use thrusters only when not rotating to avoid adding
- // velocity components along the rotation directions
- // Note that only the latest Rotate() command has any
- // effect, i.e. the rotation angle does not accumulate
- // for successive calls.
+  // Check for rotation away from zero degrees - Rotate first,
+  // use thrusters only when not rotating to avoid adding
+  // velocity components along the rotation directions
+  // Note that only the latest Rotate() command has any
+  // effect, i.e. the rotation angle does not accumulate
+  // for successive calls.
 
- if (Angle()>1&&Angle()<359)
- {
-  if (Angle()>=180) Rotate(360-Angle());
-  else Rotate(-Angle());
-  return;
- }
+  if (Angle()>1&&Angle()<359)
+  {
+    if (Angle()>=180) Rotate(360-Angle());
+    else Rotate(-Angle());
+    return;
+  }
 
- // Module is oriented properly, check for horizontal position
- // and set thrusters appropriately.
- if (Position_X()>PLAT_X)
- {
-  // Lander is to the LEFT of the landing platform, use Right thrusters to move
-  // lander to the left.
-  Left_Thruster(0);	// Make sure we're not fighting ourselves here!
-  if (Velocity_X()>(-VXlim)) Right_Thruster((VXlim+fmin(0,Velocity_X()))/VXlim);
+  // Module is oriented properly, check for horizontal position
+  // and set thrusters appropriately.
+  if (Position_X()>PLAT_X)
+  {
+    // Lander is to the LEFT of the landing platform, use Right thrusters to move
+    // lander to the left.
+    Left_Thruster(0);	// Make sure we're not fighting ourselves here!
+    if (Velocity_X()>(-VXlim)) Right_Thruster((VXlim+fmin(0,Velocity_X()))/VXlim);
+    else
+    {
+    // Exceeded velocity limit, brake
+    Right_Thruster(0);
+    Left_Thruster(fabs(VXlim-Velocity_X()));
+    }
+  }
   else
   {
-   // Exceeded velocity limit, brake
-   Right_Thruster(0);
-   Left_Thruster(fabs(VXlim-Velocity_X()));
+    // Lander is to the RIGHT of the landing platform, opposite from above
+    Right_Thruster(0);
+    if (Velocity_X()<VXlim) Left_Thruster((VXlim-fmax(0,Velocity_X()))/VXlim);
+    else
+    {
+    Left_Thruster(0);
+    Right_Thruster(fabs(VXlim-Velocity_X()));
+    }
   }
+
+  // Vertical adjustments. Basically, keep the module below the limit for
+  // vertical velocity and allow for continuous descent. We trust
+  // Safety_Override() to save us from crashing with the ground.
+  if (Velocity_Y()<VYlim) Main_Thruster(1.0);
+  else Main_Thruster(0);
+ }
+ else if (working == 2)
+ {
+  // TO DO: implement only 2 thursters working
  }
  else
  {
-  // Lander is to the RIGHT of the landing platform, opposite from above
-  Right_Thruster(0);
-  if (Velocity_X()<VXlim) Left_Thruster((VXlim-fmax(0,Velocity_X()))/VXlim);
-  else
-  {
-   Left_Thruster(0);
-   Right_Thruster(fabs(VXlim-Velocity_X()));
-  }
+  // TO DO: implement only 1 thruster working
  }
-
- // Vertical adjustments. Basically, keep the module below the limit for
- // vertical velocity and allow for continuous descent. We trust
- // Safety_Override() to save us from crashing with the ground.
- if (Velocity_Y()<VYlim) Main_Thruster(1.0);
- else Main_Thruster(0);
 }
 
 void Safety_Override(void)
@@ -334,75 +345,86 @@ void Safety_Override(void)
  // safely land the craft)
  if (fabs(PLAT_X-Position_X())<150&&fabs(PLAT_Y-Position_Y())<150) return;
 
- // Determine the closest surfaces in the direction
- // of motion. This is done by checking the sonar
- // array in the quadrant corresponding to the
- // ship's motion direction to find the entry
- // with the smallest registered distance
+ int working = MT_OK + LT_OK + RT_OK;
+ if (working == 3) {
+  // Determine the closest surfaces in the direction
+  // of motion. This is done by checking the sonar
+  // array in the quadrant corresponding to the
+  // ship's motion direction to find the entry
+  // with the smallest registered distance
 
- // Horizontal direction.
- dmin=1000000;
- if (Velocity_X()>0)
- {
-  for (int i=5;i<14;i++)
-   if (SONAR_DIST[i]>-1&&SONAR_DIST[i]<dmin) dmin=SONAR_DIST[i];
- }
- else
- {
-  for (int i=22;i<32;i++)
-   if (SONAR_DIST[i]>-1&&SONAR_DIST[i]<dmin) dmin=SONAR_DIST[i];
- }
- // Determine whether we're too close for comfort. There is a reason
- // to have this distance limit modulated by horizontal speed...
- // what is it?
- if (dmin<DistLimit*fmax(.25,fmin(fabs(Velocity_X())/5.0,1)))
- { // Too close to a surface in the horizontal direction
-  if (Angle()>1&&Angle()<359)
+  // Horizontal direction.
+  dmin=1000000;
+  if (Velocity_X()>0)
   {
-   if (Angle()>=180) Rotate(360-Angle());
-   else Rotate(-Angle());
-   return;
-  }
-
-  if (Velocity_X()>0){
-   Right_Thruster(1.0);
-   Left_Thruster(0.0);
+    for (int i=5;i<14;i++)
+    if (SONAR_DIST[i]>-1&&SONAR_DIST[i]<dmin) dmin=SONAR_DIST[i];
   }
   else
   {
-   Left_Thruster(1.0);
-   Right_Thruster(0.0);
+    for (int i=22;i<32;i++)
+    if (SONAR_DIST[i]>-1&&SONAR_DIST[i]<dmin) dmin=SONAR_DIST[i];
   }
- }
+  // Determine whether we're too close for comfort. There is a reason
+  // to have this distance limit modulated by horizontal speed...
+  // what is it?
+  if (dmin<DistLimit*fmax(.25,fmin(fabs(Velocity_X())/5.0,1)))
+  { // Too close to a surface in the horizontal direction
+    if (Angle()>1&&Angle()<359)
+    {
+    if (Angle()>=180) Rotate(360-Angle());
+    else Rotate(-Angle());
+    return;
+    }
 
- // Vertical direction
- dmin=1000000;
- if (Velocity_Y()>5)      // Mind this! there is a reason for it...
- {
-  for (int i=0; i<5; i++)
-   if (SONAR_DIST[i]>-1&&SONAR_DIST[i]<dmin) dmin=SONAR_DIST[i];
-  for (int i=32; i<36; i++)
-   if (SONAR_DIST[i]>-1&&SONAR_DIST[i]<dmin) dmin=SONAR_DIST[i];
- }
- else
- {
-  for (int i=14; i<22; i++)
-   if (SONAR_DIST[i]>-1&&SONAR_DIST[i]<dmin) dmin=SONAR_DIST[i];
- }
- if (dmin<DistLimit)   // Too close to a surface in the horizontal direction
- {
-  if (Angle()>1||Angle()>359)
-  {
-   if (Angle()>=180) Rotate(360-Angle());
-   else Rotate(-Angle());
-   return;
+    if (Velocity_X()>0){
+    Right_Thruster(1.0);
+    Left_Thruster(0.0);
+    }
+    else
+    {
+    Left_Thruster(1.0);
+    Right_Thruster(0.0);
+    }
   }
-  if (Velocity_Y()>2.0){
-   Main_Thruster(0.0);
+
+  // Vertical direction
+  dmin=1000000;
+  if (Velocity_Y()>5)      // Mind this! there is a reason for it...
+  {
+    for (int i=0; i<5; i++)
+    if (SONAR_DIST[i]>-1&&SONAR_DIST[i]<dmin) dmin=SONAR_DIST[i];
+    for (int i=32; i<36; i++)
+    if (SONAR_DIST[i]>-1&&SONAR_DIST[i]<dmin) dmin=SONAR_DIST[i];
   }
   else
   {
-   Main_Thruster(1.0);
+    for (int i=14; i<22; i++)
+    if (SONAR_DIST[i]>-1&&SONAR_DIST[i]<dmin) dmin=SONAR_DIST[i];
   }
+  if (dmin<DistLimit)   // Too close to a surface in the horizontal direction
+  {
+    if (Angle()>1||Angle()>359)
+    {
+    if (Angle()>=180) Rotate(360-Angle());
+    else Rotate(-Angle());
+    return;
+    }
+    if (Velocity_Y()>2.0){
+    Main_Thruster(0.0);
+    }
+    else
+    {
+    Main_Thruster(1.0);
+    }
+  }
+ }
+ else if (working == 2)
+ {
+  // TO DO: implement only 2 thursters working
+ }
+ else
+ {
+  // TO DO: implement only 1 thurster working
  }
 }
