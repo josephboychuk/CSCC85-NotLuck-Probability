@@ -178,6 +178,8 @@ bool AG_OK = true;
 bool SN_OK = true;
 
 double Robust_Position_Y(void);
+double Robust_Position_X(void);
+void Check_Sensors(void);
 
 /* 
   This funciton stores data in the global variables so that the 
@@ -185,59 +187,65 @@ double Robust_Position_Y(void);
 */
 void Set_Data(void)
 {
+  Check_Sensors();
   LAST_VELOCITY_X = Velocity_X();
   LAST_VELOCITY_Y = Velocity_Y();
-  LAST_POSITION_X = Position_X();
+  LAST_POSITION_X = Robust_Position_X();
   LAST_POSITION_Y = Robust_Position_Y();
   LAST_ANGLE = Angle();
 }
 
-
-/* The following functions look for drastic change in sensor output, indicating
-    that the sensor has malfunctioned. Includes print statement for console. */
-bool VX_Sensor_OK(void)
+/* Runs a check on all sensors and flags malfunctioning ones.
+    Will not run until emulator has initialized values properly. */
+void Check_Sensors(void)
 {
-  bool OK = abs(LAST_VELOCITY_X - Velocity_X()) <= 2;
-  if (!OK) {
+  if (COUNTER < 100) return;
+
+  if (VX_OK && abs(LAST_VELOCITY_X - Velocity_X()) > 2)
+  {
     std::cout << "Horizontal Velocity Sensor Malfunction\n";
+    VX_OK = false;
   }
-  return OK;
-}
-
-bool VY_Sensor_OK(void)
-{
-  bool OK = abs(LAST_VELOCITY_Y - Velocity_Y()) <= 2;
-  if (!OK) {
+  
+  if (VY_OK && abs(LAST_VELOCITY_Y - Velocity_Y()) > 2)
+  {
     std::cout << "Vertical Velocity Sensor Malfunction\n";
+    VY_OK = false;
   }
-  return OK;
-}
 
-bool PX_Sensor_OK(void)
-{
-  bool OK = abs(LAST_POSITION_X - Position_X()) <= 60;
-  if (!OK) {
+  if (PX_OK && abs(LAST_POSITION_X - Robust_Position_X()) > 60)
+  {
     std::cout << "Horizontal Position Sensor Malfunction\n";
+    PX_OK = false;
   }
-  return OK;
-}
 
-bool PY_Sensor_OK(void)
-{
-  bool OK = abs(LAST_POSITION_Y - Robust_Position_Y()) <= 60;
-  if (!OK) {
+  if (PY_OK && abs(LAST_POSITION_Y - Robust_Position_Y()) > 60)
+  {
     std::cout << "Vertical Position Sensor Malfunction\n";
+    PY_OK = false;
   }
-  return OK;
+
+  if (AG_OK && abs(180 - fabs(fmod(fabs(LAST_ANGLE - Angle()), 360) - 180)) > 25)
+  {
+    std::cout << "Angle Sensor Malfunction\n";
+    AG_OK = false;
+  }
 }
 
-bool AG_Sensor_OK(void)
+/* These functions take in the input from as many sensors as possible along with
+    past information to give the controller the best estimate of the information
+    normally provided by working sensors. */
+
+double Robust_Position_X(void)
 {
-  bool OK = abs(180 - fabs(fmod(fabs(LAST_ANGLE - Angle()), 360) - 180)) <= 25;
-  if (!OK) {
-    std::cout << "Angle Sensor Malfunction\n";
+  if (!PX_OK)
+  {
+    if (VX_OK)
+    {
+      return LAST_POSITION_X + Velocity_X();
+    }
   }
-  return OK;
+  return Position_X();
 }
 
 double Robust_Position_Y(void)
@@ -304,21 +312,17 @@ void Lander_Control(void)
  double VXlim;
  double VYlim;
 
- if (VX_OK && COUNTER > 100) VX_OK = VX_Sensor_OK();
- if (VY_OK && COUNTER > 100) VY_OK = VY_Sensor_OK();
- if (PX_OK && COUNTER > 100) PX_OK = PX_Sensor_OK();
- if (PY_OK && COUNTER > 100) PY_OK = PY_Sensor_OK();
- if (AG_OK && COUNTER > 100) AG_OK = AG_Sensor_OK();
+Check_Sensors();
 
-//std::cout << RangeDist() << " vs " << Position_Y() << "\n";
+//std::cout << Robust_Position_X() << " vs " << LAST_POSITION_X << "\n";
 
  // Set velocity limits depending on distance to platform.
  // If the module is far from the platform allow it to
  // move faster, decrease speed limits as the module
  // approaches landing. You may need to be more conservative
  // with velocity limits when things fail.
- if (fabs(Position_X()-PLAT_X)>200) VXlim=25;
- else if (fabs(Position_X()-PLAT_X)>100) VXlim=15;
+ if (fabs(Robust_Position_X()-PLAT_X)>200) VXlim=25;
+ else if (fabs(Robust_Position_X()-PLAT_X)>100) VXlim=15;
  else VXlim=5;
 
  if (PLAT_Y-Robust_Position_Y()>200) VYlim=-20;
@@ -326,7 +330,7 @@ void Lander_Control(void)
  else VYlim=-4;				       // limit descent velocity
 
  // Ensure we will be OVER the platform when we land
- if (fabs(PLAT_X-Position_X())/fabs(Velocity_X())>1.25*fabs(PLAT_Y-Robust_Position_Y())/fabs(Velocity_Y())) VYlim=0;
+ if (fabs(PLAT_X-Robust_Position_X())/fabs(Velocity_X())>1.25*fabs(PLAT_Y-Robust_Position_Y())/fabs(Velocity_Y())) VYlim=0;
 
  // IMPORTANT NOTE: The code below assumes all components working
  // properly. IT MAY OR MAY NOT BE USEFUL TO YOU when components
@@ -349,7 +353,7 @@ void Lander_Control(void)
 
  // Module is oriented properly, check for horizontal position
  // and set thrusters appropriately.
- if (Position_X()>PLAT_X)
+ if (Robust_Position_X()>PLAT_X)
  {
   // Lander is to the LEFT of the landing platform, use Right thrusters to move
   // lander to the left.
@@ -430,7 +434,7 @@ void Safety_Override(void)
  // safety override (close to the landing platform
  // the Control_Policy() should be trusted to
  // safely land the craft)
- if (fabs(PLAT_X-Position_X())<150&&fabs(PLAT_Y-Robust_Position_Y())<150) return;
+ if (fabs(PLAT_X-Robust_Position_X())<150&&fabs(PLAT_Y-Robust_Position_Y())<150) return;
 
  // Determine the closest surfaces in the direction
  // of motion. This is done by checking the sonar
