@@ -176,9 +176,9 @@ void Set_Thrusters(double main, double left, double right)
 */
  // All thrusters work so proceed normally
  if (MT_OK + RT_OK + LT_OK == 3) {
-  if (main >= 0.0) Main_Thruster(main);
-  if (left >= 0.0) Left_Thruster(left);
-  if (right >= 0.0) Right_Thruster(right);
+  if (main >= 0.0) {Main_Thruster(main);}
+  if (left >= 0.0) {Left_Thruster(left);}
+  if (right >= 0.0) {Right_Thruster(right);}
  }
  else if (MT_OK + RT_OK + LT_OK == 2) {
   // Only 2 thrusters working
@@ -289,30 +289,42 @@ void Lander_Control(void)
   // Lander is to the LEFT of the landing platform, use Right thrusters to move
   // lander to the left.
   left = 0.0;	// Make sure we're not fighting ourselves here!
-  if (Velocity_X()>(-VXlim)) right = (VXlim+fmin(0,Velocity_X()))/VXlim;
+  Set_Thrusters(main, left, right);
+  if (Velocity_X()>(-VXlim))
+  {
+    right = (VXlim+fmin(0,Velocity_X()))/VXlim;
+    Set_Thrusters(main, left, right);
+  }
   else
   {
    // Exceeded velocity limit, brake
    right = 0.0;
    left = fabs(VXlim-Velocity_X());
+   Set_Thrusters(main, left, right);
   }
  }
  else
  {
   // Lander is to the RIGHT of the landing platform, opposite from above
   right = 0.0;
-  if (Velocity_X()<VXlim) left = (VXlim-fmax(0,Velocity_X()))/VXlim;
+  Set_Thrusters(main, left, right);
+  if (Velocity_X()<VXlim)
+  {
+   left = (VXlim-fmax(0,Velocity_X()))/VXlim;
+   Set_Thrusters(main, left, right);
+  }
   else
   {
    left = 0.0;
    right = fabs(VXlim-Velocity_X());
+   Set_Thrusters(main, left, right);
   }
  }
 
  // Vertical adjustments. Basically, keep the module below the limit for
  // vertical velocity and allow for continuous descent. We trust
  // Safety_Override() to save us from crashing with the ground.
- if (Velocity_Y()<VYlim) main = 1.0;
+ if (Velocity_Y()<VYlim) {main = 1.0;}
  else main = 0.0;
 
  Set_Thrusters(main, left, right);
@@ -401,11 +413,13 @@ void Safety_Override(void)
   if (Velocity_X()>0){
    right = 1.0;
    left = 0.0;
+   Set_Thrusters(main, left, right);
   }
   else
   {
    left = 1.0;
    right = 0.0;
+   Set_Thrusters(main, left, right);
   }
  }
 
