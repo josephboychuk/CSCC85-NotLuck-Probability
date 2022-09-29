@@ -159,8 +159,6 @@
   Standard C libraries
 */
 #include <math.h>
-#include <iostream>
-
 #include "Lander_Control.h"
 
 double LAST_VELOCITY_X=0;
@@ -204,31 +202,26 @@ void Check_Sensors(void)
 
   if (VX_OK && abs(LAST_VELOCITY_X - Velocity_X()) > 2)
   {
-    std::cout << "Horizontal Velocity Sensor Malfunction\n";
     VX_OK = false;
   }
   
   if (VY_OK && abs(LAST_VELOCITY_Y - Velocity_Y()) > 2)
   {
-    std::cout << "Vertical Velocity Sensor Malfunction\n";
     VY_OK = false;
   }
 
   if (PX_OK && abs(LAST_POSITION_X - Robust_Position_X()) > 60)
   {
-    std::cout << "Horizontal Position Sensor Malfunction\n";
     PX_OK = false;
   }
 
   if (PY_OK && abs(LAST_POSITION_Y - Robust_Position_Y()) > 60)
   {
-    std::cout << "Vertical Position Sensor Malfunction\n";
     PY_OK = false;
   }
 
   if (AG_OK && abs(180 - fabs(fmod(fabs(LAST_ANGLE - Angle()), 360) - 180)) > 25)
   {
-    std::cout << "Angle Sensor Malfunction\n";
     AG_OK = false;
   }
 }
