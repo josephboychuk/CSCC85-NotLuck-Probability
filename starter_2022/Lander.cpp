@@ -177,6 +177,8 @@ bool PY_OK = true;
 bool AG_OK = true;
 bool SN_OK = true;
 
+double Robust_Position_Y(void);
+
 /* 
   This funciton stores data in the global variables so that the 
   lander has references to old data in the case of sensor failures.
@@ -186,7 +188,7 @@ void Set_Data(void)
   LAST_VELOCITY_X = Velocity_X();
   LAST_VELOCITY_Y = Velocity_Y();
   LAST_POSITION_X = Position_X();
-  LAST_POSITION_Y = Position_Y();
+  LAST_POSITION_Y = Robust_Position_Y();
   LAST_ANGLE = Angle();
 }
 
@@ -222,7 +224,7 @@ bool PX_Sensor_OK(void)
 
 bool PY_Sensor_OK(void)
 {
-  bool OK = abs(LAST_POSITION_Y - Position_Y()) <= 60;
+  bool OK = abs(LAST_POSITION_Y - Robust_Position_Y()) <= 60;
   if (!OK) {
     std::cout << "Vertical Position Sensor Malfunction\n";
   }
@@ -236,6 +238,15 @@ bool AG_Sensor_OK(void)
     std::cout << "Angle Sensor Malfunction\n";
   }
   return OK;
+}
+
+double Robust_Position_Y(void)
+{
+  if (!PY_OK)
+  {
+    if (AG_OK) return 865 - (RangeDist()*cos(Angle()*PI / 180.0));
+  }
+  return Position_Y();
 }
 
 void Lander_Control(void)
@@ -299,6 +310,8 @@ void Lander_Control(void)
  if (PY_OK && COUNTER > 100) PY_OK = PY_Sensor_OK();
  if (AG_OK && COUNTER > 100) AG_OK = AG_Sensor_OK();
 
+//std::cout << RangeDist() << " vs " << Position_Y() << "\n";
+
  // Set velocity limits depending on distance to platform.
  // If the module is far from the platform allow it to
  // move faster, decrease speed limits as the module
@@ -308,12 +321,12 @@ void Lander_Control(void)
  else if (fabs(Position_X()-PLAT_X)>100) VXlim=15;
  else VXlim=5;
 
- if (PLAT_Y-Position_Y()>200) VYlim=-20;
- else if (PLAT_Y-Position_Y()>100) VYlim=-10;  // These are negative because they
+ if (PLAT_Y-Robust_Position_Y()>200) VYlim=-20;
+ else if (PLAT_Y-Robust_Position_Y()>100) VYlim=-10;  // These are negative because they
  else VYlim=-4;				       // limit descent velocity
 
  // Ensure we will be OVER the platform when we land
- if (fabs(PLAT_X-Position_X())/fabs(Velocity_X())>1.25*fabs(PLAT_Y-Position_Y())/fabs(Velocity_Y())) VYlim=0;
+ if (fabs(PLAT_X-Position_X())/fabs(Velocity_X())>1.25*fabs(PLAT_Y-Robust_Position_Y())/fabs(Velocity_Y())) VYlim=0;
 
  // IMPORTANT NOTE: The code below assumes all components working
  // properly. IT MAY OR MAY NOT BE USEFUL TO YOU when components
@@ -417,7 +430,7 @@ void Safety_Override(void)
  // safety override (close to the landing platform
  // the Control_Policy() should be trusted to
  // safely land the craft)
- if (fabs(PLAT_X-Position_X())<150&&fabs(PLAT_Y-Position_Y())<150) return;
+ if (fabs(PLAT_X-Position_X())<150&&fabs(PLAT_Y-Robust_Position_Y())<150) return;
 
  // Determine the closest surfaces in the direction
  // of motion. This is done by checking the sonar
