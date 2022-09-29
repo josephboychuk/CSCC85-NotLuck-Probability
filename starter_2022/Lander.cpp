@@ -179,6 +179,7 @@ bool SN_OK = true;
 
 double Robust_Position_Y(void);
 double Robust_Position_X(void);
+double Robust_Angle(void);
 void Check_Sensors(void);
 
 /* 
@@ -192,7 +193,7 @@ void Set_Data(void)
   LAST_VELOCITY_Y = Velocity_Y();
   LAST_POSITION_X = Robust_Position_X();
   LAST_POSITION_Y = Robust_Position_Y();
-  LAST_ANGLE = Angle();
+  LAST_ANGLE = Robust_Angle();
 }
 
 /* Runs a check on all sensors and flags malfunctioning ones.
@@ -242,7 +243,7 @@ double Robust_Position_X(void)
   {
     if (VX_OK)
     {
-      return LAST_POSITION_X + Velocity_X();
+      return PLAT_X - (Velocity_X() * 1000/COUNTER);
     }
   }
   return Position_X();
@@ -252,9 +253,21 @@ double Robust_Position_Y(void)
 {
   if (!PY_OK)
   {
-    if (AG_OK) return 865 - (RangeDist()*cos(Angle()*PI / 180.0));
+    if (AG_OK) return 865 - (RangeDist()*cos(Robust_Angle()*PI / 180.0));
   }
   return Position_Y();
+}
+
+double Robust_Angle(void)
+{
+  if (!AG_OK)
+  {
+    if (PY_OK)
+    {
+      return acos(Position_Y() / (1000 - Position_Y() - RangeDist()));
+    }
+  }
+  return Angle();
 }
 
 void Lander_Control(void)
@@ -311,23 +324,26 @@ void Lander_Control(void)
 
  double VXlim;
  double VYlim;
+ int lim_X_Change;
+ int lim_Y_Change;
 
-Check_Sensors();
+ Check_Sensors();
 
-//std::cout << Robust_Position_X() << " vs " << LAST_POSITION_X << "\n";
+ lim_X_Change = 4 - VX_OK - PX_OK - AG_OK - SN_OK;
+ lim_Y_Change = 4 - VY_OK - PY_OK - AG_OK - SN_OK;
 
  // Set velocity limits depending on distance to platform.
  // If the module is far from the platform allow it to
  // move faster, decrease speed limits as the module
  // approaches landing. You may need to be more conservative
  // with velocity limits when things fail.
- if (fabs(Robust_Position_X()-PLAT_X)>200) VXlim=25;
- else if (fabs(Robust_Position_X()-PLAT_X)>100) VXlim=15;
- else VXlim=5;
+ if (fabs(Robust_Position_X()-PLAT_X)>200) VXlim=25 - (2*lim_X_Change);
+ else if (fabs(Robust_Position_X()-PLAT_X)>100) VXlim=15 - lim_X_Change;
+ else VXlim=5 - (lim_X_Change/2);
 
- if (PLAT_Y-Robust_Position_Y()>200) VYlim=-20;
- else if (PLAT_Y-Robust_Position_Y()>100) VYlim=-10;  // These are negative because they
- else VYlim=-4;				       // limit descent velocity
+ if (PLAT_Y-Robust_Position_Y()>200) VYlim=-20 + (1.5 * lim_Y_Change);
+ else if (PLAT_Y-Robust_Position_Y()>100) VYlim=-10 + (0.75 * lim_Y_Change);  // These are negative because they
+ else VYlim=-4 + (0.4 * lim_Y_Change);				       // limit descent velocity
 
  // Ensure we will be OVER the platform when we land
  if (fabs(PLAT_X-Robust_Position_X())/fabs(Velocity_X())>1.25*fabs(PLAT_Y-Robust_Position_Y())/fabs(Velocity_Y())) VYlim=0;
@@ -344,10 +360,18 @@ Check_Sensors();
  // effect, i.e. the rotation angle does not accumulate
  // for successive calls.
 
- if (Angle()>1&&Angle()<359)
+ if (Robust_Angle()>1&&Robust_Angle()<359)
  {
-  if (Angle()>=180) Rotate(360-Angle());
-  else Rotate(-Angle());
+  if (AG_OK)
+  {
+    if (Robust_Angle()>=180) Rotate(360-Robust_Angle());
+    else Rotate(-Robust_Angle());
+  } 
+  else 
+  {
+    if (Robust_Angle()>=180) Rotate((360-Robust_Angle()) / 2);
+    else Rotate(-(Robust_Angle() / 2));
+  }
   return;
  }
 
@@ -459,10 +483,10 @@ void Safety_Override(void)
  // what is it?
  if (dmin<DistLimit*fmax(.25,fmin(fabs(Velocity_X())/5.0,1)))
  { // Too close to a surface in the horizontal direction
-  if (Angle()>1&&Angle()<359)
+  if (Robust_Angle()>1&&Robust_Angle()<359)
   {
-   if (Angle()>=180) Rotate(360-Angle());
-   else Rotate(-Angle());
+   if (Robust_Angle()>=180) Rotate(360-Robust_Angle());
+   else Rotate(-Robust_Angle());
    return;
   }
 
@@ -493,10 +517,10 @@ void Safety_Override(void)
  }
  if (dmin<DistLimit)   // Too close to a surface in the horizontal direction
  {
-  if (Angle()>1||Angle()>359)
+  if (Robust_Angle()>1||Robust_Angle()>359)
   {
-   if (Angle()>=180) Rotate(360-Angle());
-   else Rotate(-Angle());
+   if (Robust_Angle()>=180) Rotate(360-Robust_Angle());
+   else Rotate(-Robust_Angle());
    return;
   }
   if (Velocity_Y()>2.0){
