@@ -159,8 +159,84 @@
   Standard C libraries
 */
 #include <math.h>
+#include <iostream>
 
 #include "Lander_Control.h"
+
+double LAST_VELOCITY_X=0;
+double LAST_VELOCITY_Y=0;
+double LAST_POSITION_X=0;
+double LAST_POSITION_Y=0;
+double LAST_ANGLE=0;
+
+int COUNTER = 0;
+bool VX_OK = true;
+bool VY_OK = true;
+bool PX_OK = true;
+bool PY_OK = true;
+bool AG_OK = true;
+bool SN_OK = true;
+
+/* 
+  This funciton stores data in the global variables so that the 
+  lander has references to old data in the case of sensor failures.
+*/
+void Set_Data(void)
+{
+  LAST_VELOCITY_X = Velocity_X();
+  LAST_VELOCITY_Y = Velocity_Y();
+  LAST_POSITION_X = Position_X();
+  LAST_POSITION_Y = Position_Y();
+  LAST_ANGLE = Angle();
+}
+
+
+/* The following functions look for drastic change in sensor output, indicating
+    that the sensor has malfunctioned. Includes print statement for console. */
+bool VX_Sensor_OK(void)
+{
+  bool OK = abs(LAST_VELOCITY_X - Velocity_X()) <= 2;
+  if (!OK) {
+    std::cout << "Horizontal Velocity Sensor Malfunction\n";
+  }
+  return OK;
+}
+
+bool VY_Sensor_OK(void)
+{
+  bool OK = abs(LAST_VELOCITY_Y - Velocity_Y()) <= 2;
+  if (!OK) {
+    std::cout << "Vertical Velocity Sensor Malfunction\n";
+  }
+  return OK;
+}
+
+bool PX_Sensor_OK(void)
+{
+  bool OK = abs(LAST_POSITION_X - Position_X()) <= 60;
+  if (!OK) {
+    std::cout << "Horizontal Position Sensor Malfunction\n";
+  }
+  return OK;
+}
+
+bool PY_Sensor_OK(void)
+{
+  bool OK = abs(LAST_POSITION_Y - Position_Y()) <= 60;
+  if (!OK) {
+    std::cout << "Vertical Position Sensor Malfunction\n";
+  }
+  return OK;
+}
+
+bool AG_Sensor_OK(void)
+{
+  bool OK = abs(180 - fabs(fmod(fabs(LAST_ANGLE - Angle()), 360) - 180)) <= 25;
+  if (!OK) {
+    std::cout << "Angle Sensor Malfunction\n";
+  }
+  return OK;
+}
 
 void Lander_Control(void)
 {
@@ -216,6 +292,12 @@ void Lander_Control(void)
 
  double VXlim;
  double VYlim;
+
+ if (VX_OK && COUNTER > 100) VX_OK = VX_Sensor_OK();
+ if (VY_OK && COUNTER > 100) VY_OK = VY_Sensor_OK();
+ if (PX_OK && COUNTER > 100) PX_OK = PX_Sensor_OK();
+ if (PY_OK && COUNTER > 100) PY_OK = PY_Sensor_OK();
+ if (AG_OK && COUNTER > 100) AG_OK = AG_Sensor_OK();
 
  // Set velocity limits depending on distance to platform.
  // If the module is far from the platform allow it to
@@ -284,6 +366,9 @@ void Lander_Control(void)
  // Safety_Override() to save us from crashing with the ground.
  if (Velocity_Y()<VYlim) Main_Thruster(1.0);
  else Main_Thruster(0);
+
+ COUNTER++;
+ Set_Data();
 }
 
 void Safety_Override(void)
