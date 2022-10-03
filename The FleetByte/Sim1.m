@@ -153,7 +153,8 @@ if (frame==0)
  beat1=interp1([0 .25 .5 .75 1],[0 .75 .25 .15 0],[0:1/60:1],'cubic');
  beat1=beat1(1:60);
  beatidx=1;
- beat_inc=HR/60;
+ % Fix calculation; originally divided by 60
+ beat_inc=HR/120;
  XYZ(3)=map(256,256);
 
  % Generate initial HRS data
@@ -217,7 +218,8 @@ else
     HR=HR-min(5,sqrt(HR-tr));
 end;
 
-beat_inc=HR/60;
+% Fix calculation; originally divided by 60
+beat_inc=HR/120;
 
 % Generate HRT data for the last second
 HRS(1:1200-120)=HRS(121:end);
