@@ -250,7 +250,8 @@ R=[cos(dang) -sin(dang)
    sin(dang) cos(dang)];
 d=R*d;
 
-Rg=dr+(Rgnoise*randn(1));
+% Fix rate gyro bug. Add d instead of dr to get actual rotation applied
+Rg=d+(Rgnoise*randn(1));
 
 hist_spd(end+1)=spd;
 hist_HR(end+1)=HR;
