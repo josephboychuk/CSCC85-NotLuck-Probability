@@ -44,7 +44,8 @@
 % Starter code: F. Estrada, Sep. 2021
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-function [MPS,HRS,Rg]=Sim1(map_idx, xyz, hr, di, vel)
+% HRS -> HRSt to fix Octave specific error: can't make function parameter HRS persistent
+function [MPS,HRSt,Rg]=Sim1(map_idx, xyz, hr, di, vel)
 
 pkg load image;     % COMMENT THIS OUT IF USING MATLAB - this is only needed in Octave
 
@@ -255,3 +256,6 @@ hist_dr(end+1,:)=d;
 hist_XYZ(end+1,:)=XYZ;
 
 frame=frame+1;
+
+% Fix Octave specific error: can't make function parameter HRS persistent
+HRSt=HRS;
