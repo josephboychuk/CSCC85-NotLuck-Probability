@@ -122,7 +122,8 @@ pkg load image;             %%% UNCOMMENT THIS FOR OCTAVE - Octave is doofus and
 
 close all;
 %%%%%%%%%% YOU CAN ADD ANY VARIABLES YOU MAY NEED BETWEEN THIS LINE... %%%%%%%%%%%%%%%%%
-
+persistent hist_xyz = [];
+persistent hist_mps = [];
 %%%%%%%%%% ... AND THIS LINE %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 idx=1;
@@ -181,11 +182,22 @@ while(idx<=secs)               %% Main simulation loop
  %          corresponding estimate, taken over time. 
  %    
  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
- xyz=[128 128 .5];       % Replace with your computation of position, the map is 512x512 pixels in size
+ % MPS is the coordinates we want, but theres random noise within 1.5m of actual
+ hist_mps(idx, :) = MPS;
+ new_xyz = MPS;
+ hist_xyz(idx, :) = new_xyz;
+ xyz=new_xyz;       % Replace with your computation of position, the map is 512x512 pixels in size
  hr=82;                  % Replace with your computation of heart rate
- di=[0 1];               % Replace with your computation for running direction, this should be a 2D unit vector
- vel=5;                  % Replace with your computation of running velocity, in Km/h
+ % NOTE: the fix for rate gyro on Piazza gives R*d + noise, which is the running
+ % direction after rotation is applied... which is what we're computing??
+ di=Rg;               % Replace with your computation for running direction, this should be a 2D unit vector
+ % displacement in m over last second, so convert to km/h
+ new_vel = 0;
+ if (idx > 1)
+    disp = norm(new_xyz(1:2) - hist_xyz(idx-1, 1:2));
+    new_vel = disp * 3600 / 1000;
+ end;
+ vel=new_vel;                  % Replace with your computation of running velocity, in Km/h
  
  if (debug==1)
      figure(5);clf;plot(HRS);
