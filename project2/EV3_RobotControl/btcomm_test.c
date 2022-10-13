@@ -35,14 +35,19 @@ int main(int argc, char *argv[])
  
  //just uncomment your bot's hex key to compile for your bot, and comment the other ones out.
  #ifndef HEXKEY
- 	#define HEXKEY "00:16:53:56:55:D9"	// <--- SET UP YOUR EV3's HEX ID here
+ 	#define HEXKEY "00:16:53:55:DB:D3"	// <--- SET UP YOUR EV3's HEX ID here
  #endif
 
- BT_open(HEXKEY);
+ if (BT_open(HEXKEY) == -1)
+ {
+   fprintf(stderr, "failed to connect to EV3\n");
+   BT_close();
+   return -1;
+ }
 
  // name must not contain spaces or special characters
  // max name length is 12 characters
- BT_setEV3name("R2D2");
+ BT_setEV3name("NotLuck");
 
  BT_play_tone_sequence(tone_data);
 
