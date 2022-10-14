@@ -53,6 +53,71 @@ const char* colour (int index) {
   return col;
 }
 
+void colour_tone(int index, int tone[1][3]) {
+  // switch (index)
+  // {
+  //   case 1:
+  //     // col = "Black"; 
+  //     break;
+  //   case 2:
+  //     // col = "Blue";
+  //     break;
+  //   case 3:
+  //     // col = "Green";
+  //     break;
+  //   case 4:
+  //     // col = "Yellow";
+  //     break;
+  //   case 5:
+  //     // col = "Red";
+  //     break;
+  //   case 6:
+  //     // col = "White";
+  //     break;
+  //   case 7:
+  //     // col = "Brown";
+  //     break;
+  //   default:
+  //     // col = "NO COLOUR";
+  // }
+  tone[0][0] = 50 + index*250;
+  tone[0][1] = 750;
+  tone[0][2] = 30;
+}
+
+
+// Adjusts the wheels forward for the intersection
+void intersection_adjust() {
+  BT_timed_motor_port_start_v2(MOTOR_B, -8, 650);
+  BT_timed_motor_port_start_v2(MOTOR_A, -8, 650);
+  BT_timed_motor_port_start_v2(MOTOR_B, -8, 650);
+  BT_timed_motor_port_start_v2(MOTOR_A, -8, 650);
+  sleep(1);
+}
+
+//Rotates rotation number of degrees and stores a reading in the given array
+int rotate_and_read(int rotation, int RGB[3]) {
+
+  BT_timed_motor_port_start(MOTOR_B, -20, 0, rotation * 52 / 3, 0);
+  BT_timed_motor_port_start(MOTOR_A, 20, 0, rotation * 52 / 3, 0);
+  sleep(rotation/30);
+  BT_read_colour_sensor_RGB(PORT_1, RGB);
+  printf("The colour being read is (R, G, B) (%d, %d, %d) \n", RGB[0], RGB[1], RGB[2]);
+  int coloridx = BT_read_colour_sensor(PORT_1);
+  printf("The Bot considers this to be %s \n\n", colour(coloridx));
+  return coloridx;
+}
+
+void offroad_adjust(int zag) {
+  BT_all_stop(1);
+  bool offroad = true;
+  while (offroad)
+  {
+    BT_turn(MOTOR_B, -10 * zag, MOTOR_A, 10 * zag);
+    if (BT_read_colour_sensor(PORT_1) == 1) offroad = false;
+  }
+}
+
 int main(int argc, char *argv[]) {
   char test_msg[8] = {0x06, 0x00, 0x2A, 0x00, 0x00, 0x00, 0x00, 0x01};
   char reply[1024];
@@ -64,19 +129,6 @@ int main(int argc, char *argv[]) {
     tone_data[i][1] = -1;
     tone_data[i][2] = -1;
   }
-
-  tone_data[0][0] = 262;
-  tone_data[0][1] = 250;
-  tone_data[0][2] = 1;
-  tone_data[1][0] = 330;
-  tone_data[1][1] = 250;
-  tone_data[1][2] = 25;
-  tone_data[2][0] = 392;
-  tone_data[2][1] = 250;
-  tone_data[2][2] = 50;
-  tone_data[3][0] = 523;
-  tone_data[3][1] = 250;
-  tone_data[3][2] = 63;
 
   memset(&reply[0], 0, 1024);
 
@@ -93,60 +145,107 @@ int main(int argc, char *argv[]) {
   	BT_close();
   	return -1;
   }
-
-  // name must not contain spaces or special characters
-  // max name length is 12 characters
-  //BT_setEV3name("CoolGuy");
-
-  //BT_play_tone_sequence(tone_data);
   
-  int colour_sensor_values[3];
+  // Stores the colour value being read
+  int RGB[3];
+  int colour_read; // ************** TO BE REPLACED, CURRENTLY FOR INDEXED FUNCTION ************
+  // Variable to indicate state / movement option
+  int option = 0;
+  // Variable to change adjustment direction when offroad;
+  int zag = 1;
+  // Indicates that the bot can stop navigating
+  bool end_run = false;
+  
+  bool did_stop = false;
+  
+  while (!end_run){
 
-  BT_read_colour_sensor_RGB(PORT_1, colour_sensor_values);
+    // Do some movement based on the given option
+    
+    // Normal Drive
+    if (option == 0) {
+      BT_turn(MOTOR_B, -12, MOTOR_A, -12);
+    } 
 
-  bool barrier = false;
-  while (!barrier){
-    BT_drive(MOTOR_B, MOTOR_A, -15);
-    if (BT_read_colour_sensor(PORT_1) == 4) barrier = true;
+    // At Red Boundary
+    else if (option == 1)
+    {
+      printf("Found Boundary!\n");
+      BT_all_stop(1);
+      bool reversing = true;
+      while (reversing)
+      {
+        BT_turn(MOTOR_B, 10, MOTOR_A, 10);
+        if (BT_read_colour_sensor(PORT_1) == 4) {
+          reversing = false;
+          BT_all_stop(0);
+        }
+      }
+      intersection_adjust();
+      rotate_and_read(90, RGB);
+
+      did_stop = true;
+    }
+    
+
+    //At Intersection
+    else if (option == 2)
+    {
+      if (did_stop)
+      {
+        end_run = true;
+        break;
+      }
+      BT_all_stop(1);
+      intersection_adjust();
+      offroad_adjust(zag);
+      // zag = zag * -1;
+      int coloridx = 0;
+      int tone[1][3] = {0, 0, 0};
+      coloridx = rotate_and_read(45, RGB);
+      colour_tone(coloridx, tone);
+      BT_play_tone_sequence(tone);
+      coloridx = rotate_and_read(90, RGB);
+      colour_tone(coloridx, tone);
+      BT_play_tone_sequence(tone);
+      coloridx = rotate_and_read(90, RGB);
+      colour_tone(coloridx, tone);
+      BT_play_tone_sequence(tone);
+      coloridx = rotate_and_read(90, RGB);
+      colour_tone(coloridx, tone);
+      BT_play_tone_sequence(tone);
+      rotate_and_read(45, RGB);
+      //rotate_and_read(90, RGB);
+    }
+    
+    
+    //Read colour, decide next option
+    colour_read = BT_read_colour_sensor(PORT_1);
+
+    // Detected Intersection
+    if (colour_read == 4) {
+      option = 2;
+    }
+    // Detected Barrier
+    else if (colour_read == 5)
+    {
+      option = 1;
+    }
+    else if (colour_read == 1)
+    {
+      option = 0;
+    }
+
+    //Off road, readjust
+    else if (colour_read == 2 || colour_read == 3 || colour_read == 6) 
+    {
+      printf("Offroad, readjust! \n");
+      offroad_adjust(zag);
+      option = 0;
+    }
 
   }
-  BT_all_stop(1);
-
-
-  BT_timed_motor_port_start_v2(MOTOR_B, -15, 500);
-  BT_timed_motor_port_start_v2(MOTOR_A, -15, 500);
   
-  sleep(2);
-
-  BT_timed_motor_port_start(MOTOR_B, -20, 0, 750, 0);
-  BT_timed_motor_port_start(MOTOR_A, 20, 0, 750, 0);
-  sleep(2);
-  printf("The colour being read is (R, G, B) (%d, %d, %d) \n", colour_sensor_values[0], colour_sensor_values[1], colour_sensor_values[2]);
-  printf("The Bot considers this to be %s \n\n", colour(BT_read_colour_sensor(PORT_1)));
-  
-  BT_timed_motor_port_start(MOTOR_B, -20, 0, 1500, 0);
-  BT_timed_motor_port_start(MOTOR_A, 20, 0, 1500, 0);
-  sleep(2);
-  printf("The colour being read is (R, G, B) (%d, %d, %d) \n", colour_sensor_values[0], colour_sensor_values[1], colour_sensor_values[2]);
-  printf("The Bot considers this to be %s \n\n", colour(BT_read_colour_sensor(PORT_1)));
-
-  BT_timed_motor_port_start(MOTOR_B, -20, 0, 1500, 0);
-  BT_timed_motor_port_start(MOTOR_A, 20, 0, 1500, 0);
-  sleep(2);
-  printf("The colour being read is (R, G, B) (%d, %d, %d) \n", colour_sensor_values[0], colour_sensor_values[1], colour_sensor_values[2]);
-  printf("The Bot considers this to be %s \n\n", colour(BT_read_colour_sensor(PORT_1)));
-
-  BT_timed_motor_port_start(MOTOR_B, -20, 0, 1500, 0);
-  BT_timed_motor_port_start(MOTOR_A, 20, 0, 1500, 0);
-  sleep(2);
-  printf("The colour being read is (R, G, B) (%d, %d, %d) \n", colour_sensor_values[0], colour_sensor_values[1], colour_sensor_values[2]);
-  printf("The Bot considers this to be %s \n\n", colour(BT_read_colour_sensor(PORT_1)));
-
-  BT_timed_motor_port_start(MOTOR_B, -20, 0, 750, 0);
-  BT_timed_motor_port_start(MOTOR_A, 20, 0, 750, 0);
-  sleep(2);
-
-
 
   BT_all_stop(0);
 
