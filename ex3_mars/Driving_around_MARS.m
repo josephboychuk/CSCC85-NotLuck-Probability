@@ -193,6 +193,8 @@ old_dang=0;
 %%%%%%%%%% YOU CAN ADD ANY VARIABLES YOU MAY NEED BETWEEN THIS LINE... %%%%%%%%%%%%%%%%%
 
 old_err=Tgt_speed-norm(v);
+% store the most recent integral at the start. each column has the last 100
+% errors at that point in time, with the last error at the top of the column
 int_err=zeros(100);              % Integral over last 100 steps
 
 %%%%%%%%%% ... AND THIS LINE %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -244,13 +246,29 @@ while(1)        %% Main simulation loop
  % the derivative of error over time, and the integral of error over
  % time. You *CAN* add your own variables as needed.
  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
- U=0;       % Replace this with a computation based on your PID controller. You can
-            % add variables to this script as needed
-  
- % Please add in the line below the tuning settings that yield a good controller!
- % Kp=        , Ki=          , Kd=           
  
+ % PID controller is Kp * error e (the difference between reference and
+ % measured state variable)
+ %      + Kd * change in error over time (derivative)
+ %      + Ki * accumulated error over time (integral)
+ % the state variable we care about is speed
+ e=Tgt_speed-norm(v);
+ % change in time is from previous step to current step
+ d_e=e-old_err;
+ % accumulated error
+ i_e=sum(int_err(:,1))+e;
+ U=Kp*e + Kd*d_e + Ki*i_e;       % Replace this with a computation based on your PID controller. You can
+ % add variables to this script as needed
+ 
+ % Please add in the line below the tuning settings that yield a good controller!
+ % Kp= 0.3       , Ki= 0.0002         , Kd= 0.08          
+ 
+ % don't forget to update the old error and accumulated error
+ old_err = e;
+ % newest integral added to front, so discard the last one
+ int_err(:, 2:end) = int_err(:, 1:end-1);
+ % most recent error is at the top of a column, so discard the last one
+ int_err(:, 1) = [e, int_err(1:end-1, 1)']';
   
  %%%%%%%%%%%%%%%%%%  DO NOT CHANGE ANY CODE BELOW THIS LINE %%%%%%%%%%%%%%%%%%%%%
  
