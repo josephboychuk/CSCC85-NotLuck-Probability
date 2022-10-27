@@ -88,11 +88,32 @@
 
 #include "EV3_Localization.h"
 
+/* Constants specific to our robot design */
+char PORT_COLOUR = PORT_1;
+char MOTOR_LEFT = MOTOR_B;
+char MOTOR_RIGHT = MOTOR_C;
+
+// Name of the file containing the RGB reference values
+const char *REF_NAME = "reference.txt";
+// Number of map colours
+const int N_COLOURS = 6;
+
 int map[400][4];            // This holds the representation of the map, up to 20x20
                             // intersections, raster ordered, 4 building colours per
                             // intersection.
 int sx, sy;                 // Size of the map (number of intersections along x and y)
 double beliefs[400][4];     // Beliefs for each location and motion direction
+
+/* RGB reference values for each map colour obtained from calibration
+  The index corresponds to the colors:
+  0 black
+  1 blue
+  2 green
+  3 yellow
+  4 red
+  5 white
+*/
+int ref_rgb[N_COLOURS][3];
 
 int main(int argc, char *argv[])
 {
@@ -125,8 +146,18 @@ int main(int argc, char *argv[])
   * OPTIONAL TO DO: If you added code for sensor calibration, add just below this comment block any code needed to
   *   read your calibration data for use in your localization code. Skip this if you are not using calibration
   * ****************************************************************************************************************/
- 
- 
+ // Read the reference values from the file and store them
+ FILE *ptr_ref = fopen(REF_NAME, "r");
+ if (!ptr_ref)
+ {
+  fprintf(stderr, "Could not open the reference file: %s", REF_NAME);
+  exit(1);
+ }
+ for (int idx = 0; idx < N_COLOURS; idx++)
+ {
+  fscanf(ptr_ref, "%d,%d,%d", &ref_rgb[idx][0], &ref_rgb[idx][1], &ref_rgb[idx][2]);
+ }
+ fclose(ptr_ref);
  // Your code for reading any calibration information should not go below this line //
  
  map_image=readPPMimage(&mapname[0],&rx,&ry);
@@ -407,7 +438,83 @@ void calibrate_sensor(void)
   /************************************************************************************************************************
    *   OIPTIONAL TO DO  -   Complete this function
    ***********************************************************************************************************************/
-  fprintf(stderr,"Calibration function called!\n");  
+  fprintf(stderr,"Calibration function called!\n");
+  // Determines RGB reference values for each map color and save its it to a file named reference.txt in the current directory
+  // Format for reference.txt
+  // Each line is a colour containing: r value, g value, and b value of the colour separated by a comma
+  //    The rgb values are the values returned from the color sensor using BT_read_colour_sensor_RGB
+  // The last line is a blank new line
+  // The colours are always in the order black, blue, green, yellow, red, white
+
+  // Note: the starter code does not open the socket before calling calibration, so we manage the socket here
+  // Open a socket to the EV3 for remote controlling the bot.
+  if (BT_open(HEXKEY)!=0)
+  {
+    fprintf(stderr,"Unable to open comm socket to the EV3, make sure the EV3 kit is powered on, and that the\n");
+    fprintf(stderr," hex key for the EV3 matches the one in EV3_Localization.h\n");
+    exit(1);
+  }
+
+  const char *COLOURS[N_COLOURS] = {"black", "blue", "green", "yellow", "red", "white"};
+  // number of times to scan each colour
+  const int SCAN_N = 5;
+
+  // Prompt the user to scan all map colours
+  int ref[N_COLOURS][3];
+  for (int idx = 0; idx < N_COLOURS; idx++)
+  {
+    ref[idx][0] = 0;
+    ref[idx][1] = 0;
+    ref[idx][2] = 0;
+  }
+  for (int i = 0; i < N_COLOURS; i++)
+  {
+    // For each color, ask the user to scan 5 different locations and use average R G B values
+    char retry = 1;
+    while (retry)
+    {
+      for (int j = 0; j < SCAN_N; j++)
+      {
+        fprintf(stderr, "(%d/%d) Press ENTER to scan %s...", j+1, SCAN_N, COLOURS[i]);
+        getchar();
+        int rgb[3];
+        BT_read_colour_sensor_RGB(PORT_COLOUR, rgb);
+        fprintf(stderr, "\tGot R %d, G %d, B %d\n", rgb[0], rgb[1], rgb[2]);
+        ref[i][0] += rgb[0];
+        ref[i][1] += rgb[1];
+        ref[i][2] += rgb[2];
+      }
+      fprintf(stderr, "Press ENTER to continue or enter 'n' to retry %s\n", COLOURS[i]);
+      char confirm;
+      scanf("%c", &confirm);
+      if (confirm != 'n')
+      {
+        // Take average
+        ref[i][0] = round((double) ref[i][0] / (double) SCAN_N);
+        ref[i][1] = round((double) ref[i][1] / (double) SCAN_N);
+        ref[i][2] = round((double) ref[i][2] / (double) SCAN_N);
+        retry = 0;
+        fprintf(stderr, "Finished scan for colour %s\n\n", COLOURS[i]);
+      } else {
+        // Retrying so reset
+        ref[i][0] = 0;
+        ref[i][1] = 0;
+        ref[i][2] = 0;
+        fprintf(stderr, "==== RETRYING ====\n");
+      }
+    }
+  }
+  BT_close();
+
+  // Save the reference values to a file
+  fprintf(stderr, "Finished scanning all colours\nSaving reference values to %s...", REF_NAME);
+  FILE *ptr_ref = fopen(REF_NAME, "w");
+  for (int c = 0; c < N_COLOURS; c++)
+  {
+    fprintf(ptr_ref, "%d,%d,%d\n", ref[c][0], ref[c][1], ref[c][2]);
+  }
+  fclose(ptr_ref);
+  fprintf(stderr, "\tDone.\nCallibration complete\n\n");
 }
 
 int parse_map(unsigned char *map_img, int rx, int ry)
