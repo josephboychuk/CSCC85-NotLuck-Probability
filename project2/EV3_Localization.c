@@ -87,6 +87,10 @@
 */
 
 #include "EV3_Localization.h"
+#define FORWARD_MOTION 0.9
+#define RIGHT_MOTION 0.05
+#define LEFT_MOTION 0.05 
+#define LOCALIZED_THRESHOLD 0.9
 
 int map[400][4];            // This holds the representation of the map, up to 20x20
                             // intersections, raster ordered, 4 building colours per
@@ -126,7 +130,6 @@ int main(int argc, char *argv[])
   *   read your calibration data for use in your localization code. Skip this if you are not using calibration
   * ****************************************************************************************************************/
  
- 
  // Your code for reading any calibration information should not go below this line //
  
  map_image=readPPMimage(&mapname[0],&rx,&ry);
@@ -155,17 +158,6 @@ int main(int argc, char *argv[])
   for (int i=0; i<sx; i++)
   {
    beliefs[i+(j*sx)][0]=1.0/(double)(sx*sy*4);
-   beliefs[i+(j*sx)][1]=1.0/(double)(sx*sy*4);
-   beliefs[i+(j*sx)][2]=1.0/(double)(sx*sy*4);
-   beliefs[i+(j*sx)][3]=1.0/(double)(sx*sy*4);
-  }
-
- // Open a socket to the EV3 for remote controlling the bot.
- if (BT_open(HEXKEY)!=0)
- {
-  fprintf(stderr,"Unable to open comm socket to the EV3, make sure the EV3 kit is powered on, and that the\n");
-  fprintf(stderr," hex key for the EV3 matches the one in EV3_Localization.h\n");
-  free(map_image);
   exit(1);
  }
 
@@ -210,11 +202,33 @@ int main(int argc, char *argv[])
  // HERE - write code to call robot_localization() and go_to_target() as needed, any additional logic required to get the
  //        robot to complete its task should be here.
 
-
+ int scanned_colours[4];
+ int localized = 0;
+ int *robot_x;
+ *(robot_x) = -1;
+ int *robot_y;
+ *(robot_y) = -1;
+ int *direction;
+ *(direction) = -1;
+ 
+ while (localized != 1)
+ {
+   localized = robot_localization(robot_x, robot_y, direction);
+ }
+ 
  // Cleanup and exit - DO NOT WRITE ANY CODE BELOW THIS LINE
  BT_close();
  free(map_image);
  exit(0);
+}
+
+// Adjusts the wheels forward for the intersection
+void intersection_adjust(void) {
+  BT_timed_motor_port_start_v2(MOTOR_B, -8, 650);
+  BT_timed_motor_port_start_v2(MOTOR_A, -8, 650);
+  BT_timed_motor_port_start_v2(MOTOR_B, -8, 650);
+  BT_timed_motor_port_start_v2(MOTOR_A, -8, 650);
+  sleep(1);
 }
 
 int find_street(void)   
@@ -226,7 +240,12 @@ int find_street(void)
   * You can use the return value to indicate success or failure, or to inform the rest of your code of the state of your
   * bot after calling this function
   */   
-  return(0);
+  while (BT_read_colour_sensor(PORT_1) != 1)
+  {
+    BT_turn(MOTOR_B, -10, MOTOR_A, 10);
+  }
+  if (BT_read_colour_sensor(PORT_1) == 1) return 1;
+  return 0;
 }
 
 int drive_along_street(void)
@@ -242,7 +261,29 @@ int drive_along_street(void)
   * You can use the return value to indicate success or failure, or to inform the rest of your code of the state of your
   * bot after calling this function.
   */   
-  return(0);
+  while (BT_read_colour_sensor(PORT_1) == 1)
+  {
+    BT_turn(MOTOR_B, -12, MOTOR_A, -12);
+  }
+  if (BT_read_colour_sensor(PORT_1) == 4) return 1;
+  return 0;
+}
+
+int drive_away_from_boundary(void)
+{
+ /*
+  * This function makes the robot reverse away from a boundary until the previous intersection, at which
+  * point the robot will turn right.
+  */   
+  while (BT_read_colour_sensor(PORT_1) == 1)
+  {
+    BT_turn(MOTOR_B, 8, MOTOR_A, 8);
+  }
+  if (BT_read_colour_sensor(PORT_1) == 4){
+    turn_at_intersection(0);
+    return 1;
+  }
+  return 0;
 }
 
 int scan_intersection(int *tl, int *tr, int *br, int *bl)
@@ -266,21 +307,39 @@ int scan_intersection(int *tl, int *tr, int *br, int *bl)
   * tr - top right building colour
   * br - bottom right building colour
   * bl - bottom left building colour
-  * 
-  * The function's return value can be used to indicate success or failure, or to notify your code of the bot's state
-  * after this call.
-  */
+  * if (orientation = 1) return (array_to_parse[1] * 1000) + (array_to_parse[2] * 100) + (array_to_parse[3] * 10) + array_to_parse[0];
  
   /************************************************************************************************************************
    *   TO DO  -   Complete this function
    ***********************************************************************************************************************/
+  intersection_adjust();
+  BT_timed_motor_port_start(MOTOR_B, -20, 0, 750, 0);
+  BT_timed_motor_port_start(MOTOR_A, 20, 0, 750, 0);
+  sleep(2);
+  *(tr) = BT_read_colour_sensor(PORT_1);
+
+  BT_timed_motor_port_start(MOTOR_B, -20, 0, 1500, 0);
+  BT_timed_motor_port_start(MOTOR_A, 20, 0, 1500, 0);
+  sleep(3);
+  *(br) = BT_read_colour_sensor(PORT_1);
+
+  BT_timed_motor_port_start(MOTOR_B, -20, 0, 1500, 0);
+  BT_timed_motor_port_start(MOTOR_A, 20, 0, 1500, 0);
+  sleep(3);
+  *(bl) = BT_read_colour_sensor(PORT_1);
+
+
+  BT_timed_motor_port_start(MOTOR_B, -20, 0, 1500, 0);
+  BT_timed_motor_port_start(MOTOR_A, 20, 0, 1500, 0);
+  sleep(3);
+  *(tl) = BT_read_colour_sensor(PORT_1);
+
+  BT_timed_motor_port_start(MOTOR_B, -20, 0, 750, 0);
+  BT_timed_motor_port_start(MOTOR_A, 20, 0, 750, 0);
+  sleep(2);
 
  // Return invalid colour values, and a zero to indicate failure (you will replace this with your code)
- *(tl)=-1;
- *(tr)=-1;
- *(br)=-1;
- *(bl)=-1;
- return(0);
+ return 1;
  
 }
 
@@ -297,7 +356,27 @@ int turn_at_intersection(int turn_direction)
   * 
   * You can use the return value to indicate success or failure, or to inform your code of the state of the bot
   */
-  return(0);
+
+  if (turn_direction == 0){
+    BT_timed_motor_port_start(MOTOR_B, -20, 0, 1500, 0);
+    BT_timed_motor_port_start(MOTOR_A, 20, 0, 1500, 0);
+    sleep(3);
+  }
+  else if (turn_direction == 1){
+    BT_timed_motor_port_start(MOTOR_B, 20, 0, 1500, 0);
+    BT_timed_motor_port_start(MOTOR_A, -20, 0, 1500, 0);
+    sleep(3);
+  }
+
+  return 1;
+}
+
+// Reads the contents of a 4 index array as a 4 digit base 10 integer for comparing colours
+int read_array_num(int orientation, int *array_to_parse){
+  if (orientation = 1) return (array_to_parse[1] * 1000) + (array_to_parse[2] * 100) + (array_to_parse[3] * 10) + array_to_parse[0];
+  if (orientation = 2) return (array_to_parse[2] * 1000) + (array_to_parse[3] * 100) + (array_to_parse[0] * 10) + array_to_parse[1];
+  if (orientation = 3) return (array_to_parse[3] * 1000) + (array_to_parse[0] * 100) + (array_to_parse[1] * 10) + array_to_parse[2];
+  return (array_to_parse[0] * 1000) + (array_to_parse[1] * 100) + (array_to_parse[2] * 10) + array_to_parse[3]; 
 }
 
 int robot_localization(int *robot_x, int *robot_y, int *direction)
@@ -353,12 +432,133 @@ int robot_localization(int *robot_x, int *robot_y, int *direction)
    *   TO DO  -   Complete this function
    ***********************************************************************************************************************/
 
- // Return an invalid location/direction and notify that localization was unsuccessful (you will delete this and replace it
- // with your code).
- *(robot_x)=-1;
- *(robot_y)=-1;
- *(direction)=-1;
- return(0);
+  int temp_beliefs[15][4];
+  int scanned_colours[4];
+  double sensor_accuracy = 0.95;
+
+  // Initial step when starting at random point
+  find_street();
+  drive_along_street();
+  // Think about 2 steps: sense and motion
+
+  // **SENSE**
+  //    Should be at intersection
+  scan_intersection(&scanned_colours[0], &scanned_colours[1], &scanned_colours[2], &scanned_colours[3]);
+  // Compare these values to each map point iteration
+  for (int intersection = 0; intersection < 15; intersection++)
+  {
+    for (int orientation = 0; orientation < 4; orientation++)
+    {
+      if (read_array_num(orientation, map[intersection]) == read_array_num(0, scanned_colours))
+      {
+        beliefs[intersection][orientation] = beliefs[intersection][orientation] * sensor_accuracy;
+      }
+      else {
+        beliefs[intersection][orientation] = beliefs[intersection][orientation] * (1 - sensor_accuracy);
+      }
+    }
+  }
+  // At this point, we should have completed the SENSE step. All beliefs should now be held in temp_beliefs
+
+  // **MOTION**
+  find_street();
+  drive_along_street();
+  //    Should be at intersection or boundary
+  // At intersection
+  int normalizer = 0;
+  for (int intersection = 0; intersection < 15; intersection++)
+  {
+    for (int orientation = 0; orientation < 4; orientation++)
+    {
+      /* Each calculation requires 3 different factors from the motion model
+            1. The motion in the given direction from the previous intersection   (ex. int.2[down]  --down-->   int.5[down])
+            2. The motion from the CW perpendicular movement                      (ex. int.2[right] --right-->  int.5[down])
+            3. The motion from the CCW perpendicular movement                     (ex. int.2[left]  --left-->   int.5[down])
+      */
+      if (orientation == 0)
+      {
+        if (intersection < 12){
+          double forward = beliefs[intersection + 3][0] * FORWARD_MOTION;
+          double left = beliefs[intersection + 3][1] * LEFT_MOTION;
+          double right = beliefs[intersection + 3][3] * RIGHT_MOTION;
+          temp_beliefs[intersection][orientation] = forward + left + right;
+        } 
+        else 
+        {
+          temp_beliefs[intersection][orientation] == beliefs[intersection][orientation] * 0.01;
+        }
+      }
+      else if (orientation == 1)
+      {
+        if (intersection % 3 != 0){
+          double forward = beliefs[intersection - 1][1] * FORWARD_MOTION;
+          double left = beliefs[intersection - 1][2] * LEFT_MOTION;
+          double right = beliefs[intersection - 1][0] * RIGHT_MOTION;
+          temp_beliefs[intersection][orientation] = forward + left + right;
+        } 
+        else 
+        {
+          temp_beliefs[intersection][orientation] == beliefs[intersection][orientation] * 0.01;
+        }
+      }
+      else if (orientation == 2)
+      {
+        if (intersection > 2){
+          double forward = beliefs[intersection - 3][2] * FORWARD_MOTION;
+          double left = beliefs[intersection - 3][3] * LEFT_MOTION;
+          double right = beliefs[intersection - 3][1] * RIGHT_MOTION;
+          temp_beliefs[intersection][orientation] = forward + left + right;
+        } 
+        else 
+        {
+          temp_beliefs[intersection][orientation] == beliefs[intersection][orientation] * 0.01;
+        }
+      }
+      else if (orientation == 3)
+      {
+        if (intersection % 3 != 2){
+          double forward = beliefs[intersection + 1][3] * FORWARD_MOTION;
+          double left = beliefs[intersection + 1][0] * LEFT_MOTION;
+          double right = beliefs[intersection + 1][2] * RIGHT_MOTION;
+          temp_beliefs[intersection][orientation] = forward + left + right;
+        } 
+        else 
+        {
+          temp_beliefs[intersection][orientation] == beliefs[intersection][orientation] * 0.01;
+        }
+      }
+
+      // Create a running sum of all belief values to use for normalizing
+      normalizer += temp_beliefs[intersection][orientation];
+    }
+  }
+
+  /* At this point, the grid should be updated with the information regarding the last motion.
+      This info is in the temp_beliefs. It needs to be copied onto the real beliefs array and 
+      then normalized.
+
+      We should also be able to determine if the bot has been localized.
+  */
+  for (int i =0; i < 15; i++)
+  {
+    for (int o = 0; o < 15; o++)
+    {
+      beliefs[i][o] = (temp_beliefs[i][o] / normalizer);
+      if (beliefs[i][o] >= LOCALIZED_THRESHOLD) 
+      {
+        *(robot_x)= i % 3;
+        *(robot_y)= i / 3;
+        *(direction)= o;
+        return 1;
+      }
+    }
+  }
+
+  // The robot has not been localized.
+  *(robot_x)=-1;
+  *(robot_y)=-1;
+  *(direction)=-1;
+  return(0);
 }
 
 int go_to_target(int robot_x, int robot_y, int direction, int target_x, int target_y)
