@@ -87,6 +87,7 @@
 */
 
 #include "EV3_Localization.h"
+#include "stdbool.h"
 
 int map[400][4];            // This holds the representation of the map, up to 20x20
                             // intersections, raster ordered, 4 building colours per
@@ -209,8 +210,19 @@ int main(int argc, char *argv[])
 
  // HERE - write code to call robot_localization() and go_to_target() as needed, any additional logic required to get the
  //        robot to complete its task should be here.
+ 
+ int RGB[3];
+ int colour_read;
+ int option = 0;
+ int zag = 1;
+ bool localized = false;
+ bool at_destination = false;
+
+ 
 
 
+ BT_all_stop(0);
+ fprintf(stderr, "Done!\n");
  // Cleanup and exit - DO NOT WRITE ANY CODE BELOW THIS LINE
  BT_close();
  free(map_image);
@@ -352,13 +364,60 @@ int robot_localization(int *robot_x, int *robot_y, int *direction)
   /************************************************************************************************************************
    *   TO DO  -   Complete this function
    ***********************************************************************************************************************/
+ 
+ // We assume we start at in intersection when localization starts
+ // Repeat localization until we are sure about the position and direction of the robot
+ bool is_sure = false;
+ int x, y, direction = -1;
+ while (!is_sure)
+ {
+  // Sense: intersection scan and update beliefs
+  int top_left, top_right, bot_right, bot_left = 0;
+  scan_intersection(&top_left, &top_right, &bot_right, &bot_left);
+  update_sense(top_left, top_right, bot_right, bot_left);
 
+  // Act: determine and perform the next action to move the robot and update beliefs
+  // TODO: consider what to do at a boundary!
+  // TODO: how do we represent the previous action?
+  int action = 0;
+  update_act(action);
+
+  // Normalize beliefs
+  normalize();
+
+  // If we are not sure about the position and direction, keep localizing
+  // If we are sure, return the position and direction and stop localizing
+  // TODO
+  is_sure = true;
+ }
  // Return an invalid location/direction and notify that localization was unsuccessful (you will delete this and replace it
  // with your code).
- *(robot_x)=-1;
- *(robot_y)=-1;
- *(direction)=-1;
+ // TODO: can localization fail? how do we determine this?
+ *(robot_x)=x;
+ *(robot_y)=y;
+ *(direction)=direction;
  return(0);
+}
+
+void update_sense(int tl, int tr, int br, int rl)
+{
+  /**
+   * Updates the beliefs given the current sensor readings.
+   */
+}
+
+void update_act(int action)
+{
+  /**
+   * Updates the beliefs given the previous action.
+   */
+}
+
+void normalize()
+{
+  /**
+   * Normalizes the beliefs (so they sum to 1).
+   */
 }
 
 int go_to_target(int robot_x, int robot_y, int direction, int target_x, int target_y)
