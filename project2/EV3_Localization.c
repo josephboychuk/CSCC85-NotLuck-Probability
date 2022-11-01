@@ -158,6 +158,17 @@ int main(int argc, char *argv[])
   for (int i=0; i<sx; i++)
   {
    beliefs[i+(j*sx)][0]=1.0/(double)(sx*sy*4);
+   beliefs[i+(j*sx)][1]=1.0/(double)(sx*sy*4);
+   beliefs[i+(j*sx)][2]=1.0/(double)(sx*sy*4);
+   beliefs[i+(j*sx)][3]=1.0/(double)(sx*sy*4);
+  }
+
+ // Open a socket to the EV3 for remote controlling the bot.
+ if (BT_open(HEXKEY)!=0)
+ {
+  fprintf(stderr,"Unable to open comm socket to the EV3, make sure the EV3 kit is powered on, and that the\n");
+  fprintf(stderr," hex key for the EV3 matches the one in EV3_Localization.h\n");
+  free(map_image);
   exit(1);
  }
 
@@ -307,7 +318,10 @@ int scan_intersection(int *tl, int *tr, int *br, int *bl)
   * tr - top right building colour
   * br - bottom right building colour
   * bl - bottom left building colour
-  * if (orientation = 1) return (array_to_parse[1] * 1000) + (array_to_parse[2] * 100) + (array_to_parse[3] * 10) + array_to_parse[0];
+  * 
+  * The function's return value can be used to indicate success or failure, or to notify your code of the bot's state
+  * after this call.
+  */
  
   /************************************************************************************************************************
    *   TO DO  -   Complete this function
