@@ -1,0 +1,108 @@
+Calibration function called!
+Request to connect to device 00:16:53:55:DB:D3
+Connection to 00:16:53:55:DB:D3 established at socket: 3.
+(1/5) Press ENTER to scan NO COLOUR...
+        Got R 30, G 42, B 37
+(2/5) Press ENTER to scan NO COLOUR...
+        Got R 31, G 41, B 39
+(3/5) Press ENTER to scan NO COLOUR...
+        Got R 26, G 33, B 34
+(4/5) Press ENTER to scan NO COLOUR...
+        Got R 26, G 37, B 32
+(5/5) Press ENTER to scan NO COLOUR...
+        Got R 32, G 43, B 38
+Press ENTER to continue or enter 'n' to retry NO COLOUR
+
+Finished scan for colour NO COLOUR
+
+(1/5) Press ENTER to scan Black...
+        Got R 28, G 74, B 127
+(2/5) Press ENTER to scan Black...
+        Got R 28, G 78, B 127
+(3/5) Press ENTER to scan Black...
+        Got R 33, G 85, B 126
+(4/5) Press ENTER to scan Black...
+        Got R 27, G 76, B 131
+(5/5) Press ENTER to scan Black...
+        Got R 27, G 76, B 131
+Press ENTER to continue or enter 'n' to retry Black
+
+Finished scan for colour Black
+
+(1/5) Press ENTER to scan Blue...
+        Got R 37, G 86, B 44
+(2/5) Press ENTER to scan Blue...
+        Got R 40, G 91, B 43
+(3/5) Press ENTER to scan Blue...
+        Got R 39, G 94, B 40
+(4/5) Press ENTER to scan Blue...
+        Got R 40, G 90, B 44
+(5/5) Press ENTER to scan Blue...
+        Got R 39, G 89, B 46
+Press ENTER to continue or enter 'n' to retry Blue
+
+Finished scan for colour Blue
+
+(1/5) Press ENTER to scan Green...
+        Got R 313, G 317, B 75
+(2/5) Press ENTER to scan Green...
+        Got R 303, G 288, B 67
+(3/5) Press ENTER to scan Green...
+        Got R 259, G 219, B 55
+(4/5) Press ENTER to scan Green...
+        Got R 315, G 322, B 77
+(5/5) Press ENTER to scan Green...
+        Got R 308, G 315, B 75
+Press ENTER to continue or enter 'n' to retry Green
+
+Finished scan for colour Green
+
+(1/5) Press ENTER to scan Yellow...
+        Got R 271, G 52, B 49
+(2/5) Press ENTER to scan Yellow...
+        Got R 268, G 55, B 55
+(3/5) Press ENTER to scan Yellow...
+        Got R 273, G 56, B 43
+(4/5) Press ENTER to scan Yellow...
+        Got R 266, G 57, B 54
+(5/5) Press ENTER to scan Yellow...
+        Got R 268, G 53, B 46
+Press ENTER to continue or enter 'n' to retry Yellow
+
+Finished scan for colour Yellow
+
+(1/5) Press ENTER to scan Red...
+        Got R 296, G 301, B 301
+(2/5) Press ENTER to scan Red...
+        Got R 292, G 295, B 323
+(3/5) Press ENTER to scan Red...
+        Got R 305, G 326, B 321
+(4/5) Press ENTER to scan Red...
+        Got R 305, G 324, B 314
+(5/5) Press ENTER to scan Red...
+        Got R 290, G 296, B 304
+Press ENTER to continue or enter 'n' to retry Red
+
+Finished scan for colour Red
+
+Request to close connection to device at socket id 3
+Finished scanning all colours
+Saving reference values to reference.txt...     Done.
+Calibration complete
+
+Notes:
+Max-min for each rgb. Yellow was horrible, followed by white
+>>> black
+[-4, 10, -16]
+>>> blue
+[6, 11, 6]
+>>> green
+[3, 8, 6]
+>>> yellow
+[56, 103, 22]
+>>> red
+[7, 5, 11]
+>>> white
+[15, 31, 22]
+>>> black
+[-4, 10, -16]
