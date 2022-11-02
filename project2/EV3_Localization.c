@@ -90,9 +90,9 @@
 #define FORWARD_MOTION 90
 #define RIGHT_MOTION 5
 #define LEFT_MOTION 5 
-#define LOCALIZED_THRESHOLD 0.9
-#define BATTERY 35
-#define BATTERY_ADJUST 1 + 0.1 *(100 - BATTERY)
+#define LOCALIZED_THRESHOLD 0.999
+#define BATTERY 80
+#define BATTERY_ADJUST (1 + (0.01 *(100 - BATTERY)))
 
 int map[400][4];            // This holds the representation of the map, up to 20x20
                             // intersections, raster ordered, 4 building colours per
@@ -225,7 +225,7 @@ int main(int argc, char *argv[])
    localized = robot_localization(&robot_x, &robot_y, &direction);
  }
 
- fprintf(stderr, "We are at (%d, %d) facing (%d) according to the robot\n", robot_x, robot_y, direction);
+ fprintf(stderr, "The robot has cleverly deduced it is at (%d, %d) facing (%d)\n", robot_x, robot_y, direction);
 
  if (go_to_target(robot_x, robot_y, direction, dest_x, dest_y) == 1)
  {
@@ -246,11 +246,17 @@ int main(int argc, char *argv[])
 
 // Adjusts the wheels forward for the intersection
 void intersection_adjust(void) {
-  BT_timed_motor_port_start_v2(MOTOR_B, -8, 450 * BATTERY_ADJUST);
-  BT_timed_motor_port_start_v2(MOTOR_A, -8, 450 * BATTERY_ADJUST);
+
+  while (BT_read_colour_sensor(PORT_1) == 4)
+  {
+    BT_turn(MOTOR_B, -6* BATTERY_ADJUST, MOTOR_A, -6 * BATTERY_ADJUST);
+  }
+  BT_all_stop(0);
+
   BT_timed_motor_port_start_v2(MOTOR_B, -8, 450 * BATTERY_ADJUST);
   BT_timed_motor_port_start_v2(MOTOR_A, -8, 450 * BATTERY_ADJUST);
   sleep(1);
+  find_street();
 }
 
 int find_street(void)   
@@ -264,7 +270,7 @@ int find_street(void)
   */   
   while (BT_read_colour_sensor(PORT_1) != 1)
   {
-    BT_turn(MOTOR_B, -10 * BATTERY_ADJUST, MOTOR_A, 10 * BATTERY_ADJUST);
+    BT_turn(MOTOR_B, -7 * BATTERY_ADJUST, MOTOR_A, 7 * BATTERY_ADJUST);
   }
   if (BT_read_colour_sensor(PORT_1) == 1) return 1;
   return 0;
@@ -285,7 +291,7 @@ int drive_along_street(void)
   */   
   while (BT_read_colour_sensor(PORT_1) == 1)
   {
-    BT_turn(MOTOR_B, -12 * BATTERY_ADJUST, MOTOR_A, -12 * BATTERY_ADJUST);
+    BT_turn(MOTOR_B, -8 * BATTERY_ADJUST, MOTOR_A, -8 * BATTERY_ADJUST);
   }
   return 1;
 }
@@ -340,30 +346,60 @@ int scan_intersection(int *tl, int *tr, int *br, int *bl)
    *   TO DO  -   Complete this function
    ***********************************************************************************************************************/
   intersection_adjust();
-  BT_timed_motor_port_start(MOTOR_B, -20, 0, 675 * BATTERY_ADJUST, 0);
-  BT_timed_motor_port_start(MOTOR_A, 20, 0, 675 * BATTERY_ADJUST, 0);
-  sleep(2);
+  // BT_timed_motor_port_start(MOTOR_B, -20, 0, 675 * BATTERY_ADJUST, 0);
+  // BT_timed_motor_port_start(MOTOR_A, 20, 0, 675 * BATTERY_ADJUST, 0);
+  // sleep(2);
+
+  int pos = BT_read_gyro_sensor(PORT_2);
+
+  while(abs(pos - BT_read_gyro_sensor(PORT_2)) < 45)
+  {
+    BT_turn(MOTOR_B, -15, MOTOR_A, 15);
+  }
+
   *(tr) = BT_read_colour_sensor(PORT_1);
 
-  BT_timed_motor_port_start(MOTOR_B, -20, 0, 1350 * BATTERY_ADJUST, 0);
-  BT_timed_motor_port_start(MOTOR_A, 20, 0, 1350 * BATTERY_ADJUST, 0);
-  sleep(3);
+  // BT_timed_motor_port_start(MOTOR_B, -20, 0, 1350 * BATTERY_ADJUST, 0);
+  // BT_timed_motor_port_start(MOTOR_A, 20, 0, 1350 * BATTERY_ADJUST, 0);
+  // sleep(3);
+  pos = BT_read_gyro_sensor(PORT_2);
+
+  while(abs(pos - BT_read_gyro_sensor(PORT_2)) < 90)
+  {
+    BT_turn(MOTOR_B, -15, MOTOR_A, 15);
+  }
+
   *(br) = BT_read_colour_sensor(PORT_1);
 
-  BT_timed_motor_port_start(MOTOR_B, -20, 0, 1350 * BATTERY_ADJUST, 0);
-  BT_timed_motor_port_start(MOTOR_A, 20, 0, 1350 * BATTERY_ADJUST, 0);
-  sleep(3);
+  // BT_timed_motor_port_start(MOTOR_B, -20, 0, 1350 * BATTERY_ADJUST, 0);
+  // BT_timed_motor_port_start(MOTOR_A, 20, 0, 1350 * BATTERY_ADJUST, 0);
+  // sleep(3);
+
+  pos = BT_read_gyro_sensor(PORT_2);
+
+  while(abs(pos - BT_read_gyro_sensor(PORT_2)) < 90)
+  {
+    BT_turn(MOTOR_B, -15, MOTOR_A, 15);
+  }
   *(bl) = BT_read_colour_sensor(PORT_1);
 
 
-  BT_timed_motor_port_start(MOTOR_B, -20, 0, 1350 * BATTERY_ADJUST, 0);
-  BT_timed_motor_port_start(MOTOR_A, 20, 0, 1350 * BATTERY_ADJUST, 0);
-  sleep(3);
+  // BT_timed_motor_port_start(MOTOR_B, -20, 0, 1350 * BATTERY_ADJUST, 0);
+  // BT_timed_motor_port_start(MOTOR_A, 20, 0, 1350 * BATTERY_ADJUST, 0);
+  // sleep(3);
+  pos = BT_read_gyro_sensor(PORT_2);
+
+  while(abs(pos - BT_read_gyro_sensor(PORT_2)) < 90)
+  {
+    BT_turn(MOTOR_B, -15, MOTOR_A, 15);
+  }
   *(tl) = BT_read_colour_sensor(PORT_1);
 
-  BT_timed_motor_port_start(MOTOR_B, -20, 0, 675 * BATTERY_ADJUST, 0);
-  BT_timed_motor_port_start(MOTOR_A, 20, 0, 675 * BATTERY_ADJUST, 0);
-  sleep(2);
+  // BT_timed_motor_port_start(MOTOR_B, -20, 0, 675 * BATTERY_ADJUST, 0);
+  // BT_timed_motor_port_start(MOTOR_A, 20, 0, 675 * BATTERY_ADJUST, 0);
+  // sleep(2);
+
+  find_street();
 
  // Return invalid colour values, and a zero to indicate failure (you will replace this with your code)
  return 1;
@@ -383,16 +419,23 @@ int turn_at_intersection(int turn_direction)
   * 
   * You can use the return value to indicate success or failure, or to inform your code of the state of the bot
   */
+
+  int pos = BT_read_gyro_sensor(PORT_2);
+
   if (turn_direction == 0){
-    BT_timed_motor_port_start(MOTOR_B, -20, 0, 1350 * BATTERY_ADJUST, 0);
-    BT_timed_motor_port_start(MOTOR_A, 20, 0, 1350 * BATTERY_ADJUST, 0);
-    sleep(3);
+    while(abs(pos - BT_read_gyro_sensor(PORT_2)) < 85)
+    {
+      BT_turn(MOTOR_B, -15, MOTOR_A, 15);
+    }
   }
   else if (turn_direction == 1){
-    BT_timed_motor_port_start(MOTOR_B, 20, 0, 1350 * BATTERY_ADJUST, 0);
-    BT_timed_motor_port_start(MOTOR_A, -20, 0, 1350 * BATTERY_ADJUST, 0);
-    sleep(3);
+    while(abs(pos - BT_read_gyro_sensor(PORT_2)) < 95)
+    {
+      BT_turn(MOTOR_B, 15, MOTOR_A, -15);
+    }
   }
+
+  find_street();
 
   return 1;
 }
@@ -534,7 +577,7 @@ int robot_localization(int *robot_x, int *robot_y, int *direction)
   while (localizing == 1){
     // Initial step when starting at random point
     int found_intersection = 0;
-    while (found_intersection == 0)
+    while (found_intersection == 0 && BT_read_colour_sensor(PORT_1) != 4)
     {
       find_street();
       drive_along_street();
@@ -569,8 +612,7 @@ int robot_localization(int *robot_x, int *robot_y, int *direction)
         }
       }
     }
-    fprintf(stderr, "post scanning beliefs:\n");
-    print_beliefs(beliefs);
+
     // At this point, we should have completed the SENSE step. All beliefs should now be held in temp_beliefs
 
     // **MOTION**
@@ -659,7 +701,7 @@ int robot_localization(int *robot_x, int *robot_y, int *direction)
     // At Boundary
     else if (motion == 2)
     {
-      fprintf(stderr, "Moved away from intersection and turning");
+      fprintf(stderr, "Moved away from intersection and turning\n");
       for (int intersection = 0; intersection < 15; intersection++)
       {
         for (int orientation = 0; orientation < 4; orientation++)
@@ -711,8 +753,6 @@ int robot_localization(int *robot_x, int *robot_y, int *direction)
 
         We should also be able to determine if the bot has been localized.
     */
-    fprintf(stderr, "post_motion temp_beliefs. Normalizer is: %f\n", normalizer);
-    print_beliefs(temp_beliefs);
     for (int i =0; i < 15; i++)
     {
       for (int o = 0; o < 4; o++)
@@ -723,11 +763,13 @@ int robot_localization(int *robot_x, int *robot_y, int *direction)
           *(robot_x)= i % 3;
           *(robot_y)= i / 3;
           *(direction)= o;
+          print_beliefs(beliefs);
           return 1;
         }
       }
     }
   }
+  print_beliefs(beliefs);
 
   // The robot has not been localized
   *(robot_x)=-1;

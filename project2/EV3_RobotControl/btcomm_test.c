@@ -158,96 +158,110 @@ int main(int argc, char *argv[]) {
   
   bool did_stop = false;
   
-  while (!end_run){
-
-    // Do some movement based on the given option
-    
-    // Normal Drive
-    if (option == 0) {
-      BT_turn(MOTOR_B, -12, MOTOR_A, -12);
-    } 
-
-    // At Red Boundary
-    else if (option == 1)
-    {
-      printf("Found Boundary!\n");
-      BT_all_stop(1);
-      bool reversing = true;
-      while (reversing)
-      {
-        BT_turn(MOTOR_B, 10, MOTOR_A, 10);
-        if (BT_read_colour_sensor(PORT_1) == 4) {
-          reversing = false;
-          BT_all_stop(0);
-        }
-      }
-      intersection_adjust();
-      rotate_and_read(90, RGB);
-
-      did_stop = true;
-    }
-    
-
-    //At Intersection
-    else if (option == 2)
-    {
-      if (did_stop)
-      {
-        end_run = true;
-        break;
-      }
-      BT_all_stop(1);
-      intersection_adjust();
-      offroad_adjust(zag);
-      // zag = zag * -1;
-      int coloridx = 0;
-      int tone[1][3] = {0, 0, 0};
-      coloridx = rotate_and_read(45, RGB);
-      colour_tone(coloridx, tone);
-      BT_play_tone_sequence(tone);
-      coloridx = rotate_and_read(90, RGB);
-      colour_tone(coloridx, tone);
-      BT_play_tone_sequence(tone);
-      coloridx = rotate_and_read(90, RGB);
-      colour_tone(coloridx, tone);
-      BT_play_tone_sequence(tone);
-      coloridx = rotate_and_read(90, RGB);
-      colour_tone(coloridx, tone);
-      BT_play_tone_sequence(tone);
-      rotate_and_read(45, RGB);
-      //rotate_and_read(90, RGB);
-    }
-    
-    
-    //Read colour, decide next option
-    colour_read = BT_read_colour_sensor(PORT_1);
-
-    // Detected Intersection
-    if (colour_read == 4) {
-      option = 2;
-    }
-    // Detected Barrier
-    else if (colour_read == 5)
-    {
-      option = 1;
-    }
-    else if (colour_read == 1)
-    {
-      option = 0;
-    }
-
-    //Off road, readjust
-    else if (colour_read == 2 || colour_read == 3 || colour_read == 6) 
-    {
-      printf("Offroad, readjust! \n");
-      offroad_adjust(zag);
-      option = 0;
-    }
-
+  int starting_angle = BT_read_gyro_sensor(PORT_2);
+  
+  while (abs(starting_angle - BT_read_gyro_sensor(PORT_2)) < 90)
+  {
+    BT_turn(MOTOR_B, -8, MOTOR_A, 8);
   }
+
+  BT_all_stop(1);
+
+  int second_angle = BT_read_gyro_sensor(PORT_2);
+
+  fprintf(stderr, "The first angle is %d and the second angle is %d\n", starting_angle, second_angle);
+
+;
+
   
 
-  BT_all_stop(0);
+  // while (!end_run){
+
+  //   // Do some movement based on the given option
+    
+  //   // Normal Drive
+  //   if (option == 0) {
+  //     BT_turn(MOTOR_B, -12, MOTOR_A, -12);
+  //   } 
+
+  //   // At Red Boundary
+  //   else if (option == 1)
+  //   {
+  //     printf("Found Boundary!\n");
+  //     BT_all_stop(1);
+  //     bool reversing = true;
+  //     while (reversing)
+  //     {
+  //       BT_turn(MOTOR_B, 10, MOTOR_A, 10);
+  //       if (BT_read_colour_sensor(PORT_1) == 4) {
+  //         reversing = false;
+  //         BT_all_stop(0);
+  //       }
+  //     }
+  //     intersection_adjust();
+  //     rotate_and_read(90, RGB);
+
+  //     did_stop = true;
+  //   }
+    
+
+  //   //At Intersection
+  //   else if (option == 2)
+  //   {
+  //     if (did_stop)
+  //     {
+  //       end_run = true;
+  //       break;
+  //     }
+  //     BT_all_stop(1);
+  //     intersection_adjust();
+  //     offroad_adjust(zag);
+  //     // zag = zag * -1;
+  //     int coloridx = 0;
+  //     int tone[1][3] = {0, 0, 0};
+  //     coloridx = rotate_and_read(45, RGB);
+  //     colour_tone(coloridx, tone);
+  //     BT_play_tone_sequence(tone);
+  //     coloridx = rotate_and_read(90, RGB);
+  //     colour_tone(coloridx, tone);
+  //     BT_play_tone_sequence(tone);
+  //     coloridx = rotate_and_read(90, RGB);
+  //     colour_tone(coloridx, tone);
+  //     BT_play_tone_sequence(tone);
+  //     coloridx = rotate_and_read(90, RGB);
+  //     colour_tone(coloridx, tone);
+  //     BT_play_tone_sequence(tone);
+  //     rotate_and_read(45, RGB);
+  //     //rotate_and_read(90, RGB);
+  //   }
+    
+    
+  //   //Read colour, decide next option
+  //   colour_read = BT_read_colour_sensor(PORT_1);
+
+  //   // Detected Intersection
+  //   if (colour_read == 4) {
+  //     option = 2;
+  //   }
+  //   // Detected Barrier
+  //   else if (colour_read == 5)
+  //   {
+  //     option = 1;
+  //   }
+  //   else if (colour_read == 1)
+  //   {
+  //     option = 0;
+  //   }
+
+  //   //Off road, readjust
+  //   else if (colour_read == 2 || colour_read == 3 || colour_read == 6) 
+  //   {
+  //     printf("Offroad, readjust! \n");
+  //     offroad_adjust(zag);
+  //     option = 0;
+  //   }
+
+  // }
 
   BT_close();
   fprintf(stderr, "Done!\n");
