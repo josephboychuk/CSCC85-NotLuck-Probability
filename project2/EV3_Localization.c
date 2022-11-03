@@ -90,7 +90,7 @@
 #define FORWARD_MOTION 90
 #define RIGHT_MOTION 5
 #define LEFT_MOTION 5 
-#define LOCALIZED_THRESHOLD 0.999
+#define LOCALIZED_THRESHOLD 0.95
 #define BATTERY 80
 #define BATTERY_ADJUST (1 + (0.01 *(100 - BATTERY)))
 
@@ -123,6 +123,8 @@ double beliefs[400][4];     // Beliefs for each location and motion direction
   The colours are in the same order as constant COLOUR
 */
 int ref_rgb[COLOUR_COUNT][3];
+// Converted ref rgb values to hsv
+double ref_hsv[COLOUR_COUNT][3];
 // The previous RGB value read from the colour sensor
 int prev_rgb[3] = {-1, -1, -1};
 
@@ -169,16 +171,25 @@ int main(int argc, char *argv[])
   ref_rgb[i][0] = 0;
   ref_rgb[i][1] = 0;
   ref_rgb[i][2] = 0;
+  ref_hsv[i][0] = 0.0;
+  ref_hsv[i][1] = 0.0;
+  ref_hsv[i][2] = 0.0;
  }
  for (int idx = 0; idx < 6; idx++)
  {
   fscanf(ptr_ref, "%d,%d,%d", &ref_rgb[idx][0], &ref_rgb[idx][1], &ref_rgb[idx][2]);
+  double hsv[3];
+  rgb_to_hsv(ref_rgb[idx], hsv);
+  ref_hsv[idx][0] = hsv[0];
+  ref_hsv[idx][1] = hsv[1];
+  ref_hsv[idx][2] = hsv[2];
  }
  fclose(ptr_ref);
- fprintf(stderr, "Loaded reference values:\nIndex\tR\tG\tB\n");
+ fprintf(stderr, "Loaded reference values:\nIndex\tR\tG\tB\tH\tS\tV\n");
  for (int c = 0; c < COLOUR_COUNT; c++)
  {
-  fprintf(stderr, "%d\t%d\t%d\t%d\n", COLOUR[c], ref_rgb[c][0], ref_rgb[c][1], ref_rgb[c][2]);
+  fprintf(stderr, "%d\t%d\t%d\t%d\t", COLOUR[c], ref_rgb[c][0], ref_rgb[c][1], ref_rgb[c][2]);
+  fprintf(stderr, "%f\t%f\t%f\n", ref_hsv[c][0], ref_hsv[c][1], ref_hsv[c][2]);
  }
  // Your code for reading any calibration information should not go below this line //
  
@@ -274,10 +285,20 @@ int main(int argc, char *argv[])
  }
 
  fprintf(stderr, "The robot has cleverly deduced it is at (%d, %d) facing (%d)\n", robot_x, robot_y, direction);
+ int tone_local[1][3];
+ tone_local[0][0] = 850;
+ tone_local[0][1] = 750;
+ tone_local[0][2] = 30;
+ int tone_done[1][3];
+ tone_done[0][0] = 200;
+ tone_done[0][1] = 750;
+ tone_done[0][2] = 30;
+ BT_play_tone_sequence(tone_local);
 
  if (go_to_target(robot_x, robot_y, direction, dest_x, dest_y) == 1)
  {
   fprintf(stderr, "Made it to destination!\n");
+  BT_play_tone_sequence(tone_done);
  }
  else
  {
@@ -295,7 +316,7 @@ int main(int argc, char *argv[])
 // Adjusts the wheels forward for the intersection
 void intersection_adjust(void) {
 
-  while (BT_read_colour_sensor(PORT_1) == 4)
+  while (read_colour() == 4)
   {
     BT_turn(MOTOR_B, -6* BATTERY_ADJUST, MOTOR_A, -6 * BATTERY_ADJUST);
   }
@@ -316,11 +337,11 @@ int find_street(void)
   * You can use the return value to indicate success or failure, or to inform the rest of your code of the state of your
   * bot after calling this function
   */   
-  while (BT_read_colour_sensor(PORT_1) != 1)
+  while (read_colour() != 1)
   {
     BT_turn(MOTOR_B, -7 * BATTERY_ADJUST, MOTOR_A, 7 * BATTERY_ADJUST);
   }
-  if (BT_read_colour_sensor(PORT_1) == 1) return 1;
+  if (read_colour() == 1) return 1;
   return 0;
 }
 
@@ -337,7 +358,7 @@ int drive_along_street(void)
   * You can use the return value to indicate success or failure, or to inform the rest of your code of the state of your
   * bot after calling this function.
   */   
-  while (BT_read_colour_sensor(PORT_1) == 1)
+  while (read_colour() == 1)
   {
     BT_turn(MOTOR_B, -8 * BATTERY_ADJUST, MOTOR_A, -8 * BATTERY_ADJUST);
   }
@@ -354,11 +375,11 @@ int drive_away_from_boundary(void)
   BT_timed_motor_port_start_v2(MOTOR_B, 8, 450 * BATTERY_ADJUST);
   BT_timed_motor_port_start_v2(MOTOR_A, 8, 450 * BATTERY_ADJUST);
 
-  while (BT_read_colour_sensor(PORT_1) == 1)
+  while (read_colour() == 1)
   {
     BT_turn(MOTOR_B, 8 * BATTERY_ADJUST, MOTOR_A, 8 * BATTERY_ADJUST);
   }
-  if (BT_read_colour_sensor(PORT_1) == 4){
+  if (read_colour() == 4){
     return 1;
   }
   return 0;
@@ -405,7 +426,7 @@ int scan_intersection(int *tl, int *tr, int *br, int *bl)
     BT_turn(MOTOR_B, -15, MOTOR_A, 15);
   }
 
-  *(tr) = BT_read_colour_sensor(PORT_1);
+  *(tr) = read_colour();
 
   // BT_timed_motor_port_start(MOTOR_B, -20, 0, 1350 * BATTERY_ADJUST, 0);
   // BT_timed_motor_port_start(MOTOR_A, 20, 0, 1350 * BATTERY_ADJUST, 0);
@@ -417,7 +438,7 @@ int scan_intersection(int *tl, int *tr, int *br, int *bl)
     BT_turn(MOTOR_B, -15, MOTOR_A, 15);
   }
 
-  *(br) = BT_read_colour_sensor(PORT_1);
+  *(br) = read_colour();
 
   // BT_timed_motor_port_start(MOTOR_B, -20, 0, 1350 * BATTERY_ADJUST, 0);
   // BT_timed_motor_port_start(MOTOR_A, 20, 0, 1350 * BATTERY_ADJUST, 0);
@@ -429,7 +450,7 @@ int scan_intersection(int *tl, int *tr, int *br, int *bl)
   {
     BT_turn(MOTOR_B, -15, MOTOR_A, 15);
   }
-  *(bl) = BT_read_colour_sensor(PORT_1);
+  *(bl) = read_colour();
 
 
   // BT_timed_motor_port_start(MOTOR_B, -20, 0, 1350 * BATTERY_ADJUST, 0);
@@ -441,7 +462,7 @@ int scan_intersection(int *tl, int *tr, int *br, int *bl)
   {
     BT_turn(MOTOR_B, -15, MOTOR_A, 15);
   }
-  *(tl) = BT_read_colour_sensor(PORT_1);
+  *(tl) = read_colour();
 
   // BT_timed_motor_port_start(MOTOR_B, -20, 0, 675 * BATTERY_ADJUST, 0);
   // BT_timed_motor_port_start(MOTOR_A, 20, 0, 675 * BATTERY_ADJUST, 0);
@@ -536,14 +557,14 @@ int do_motion_step(void)
     drive_along_street();
     BT_all_stop(0);
     // Stopped driving because an intersection was detected
-    if (BT_read_colour_sensor(PORT_1) == 4)
+    if (read_colour() == 4)
     {
       //BT_all_stop(1);
       motion_complete = 1;
     }
 
     // Stopped driving because a boundary was detected
-    else if (BT_read_colour_sensor(PORT_1) == 5)
+    else if (read_colour() == 5)
     {
       drive_away_from_boundary();
       BT_all_stop(0);
@@ -554,7 +575,7 @@ int do_motion_step(void)
     }
     
     // Something horrible has happened :O
-    else if (BT_read_colour_sensor(PORT_1) == 0)
+    else if (read_colour() == 0)
     {
       BT_all_stop(1);
       motion_complete = -1;
@@ -625,11 +646,11 @@ int robot_localization(int *robot_x, int *robot_y, int *direction)
   while (localizing == 1){
     // Initial step when starting at random point
     int found_intersection = 0;
-    while (found_intersection == 0 && BT_read_colour_sensor(PORT_1) != 4)
+    while (found_intersection == 0 && read_colour() != 4)
     {
       find_street();
       drive_along_street();
-      if (BT_read_colour_sensor(PORT_1) == 5)
+      if (read_colour() == 5)
       {
         drive_away_from_boundary();
       }
@@ -859,7 +880,7 @@ int go_to_target(int robot_x, int robot_y, int direction, int target_x, int targ
       direction += 1;
     }
     intersection_adjust();
-    while (BT_read_colour_sensor(PORT_1) != 4)
+    while (read_colour() != 4)
     {
       find_street();
       drive_along_street();
@@ -882,7 +903,7 @@ int go_to_target(int robot_x, int robot_y, int direction, int target_x, int targ
       }
     }
     intersection_adjust();
-    while (BT_read_colour_sensor(PORT_1) != 4)
+    while (read_colour() != 4)
     {
       find_street();
       drive_along_street();
@@ -900,7 +921,7 @@ int go_to_target(int robot_x, int robot_y, int direction, int target_x, int targ
       direction += -1;
     }
     intersection_adjust();
-    while (BT_read_colour_sensor(PORT_1) != 4)
+    while (read_colour() != 4)
     {
       find_street();
       drive_along_street();
@@ -924,7 +945,7 @@ int go_to_target(int robot_x, int robot_y, int direction, int target_x, int targ
       }
     }
     intersection_adjust();
-    while (BT_read_colour_sensor(PORT_1) != 4)
+    while (read_colour() != 4)
     {
       find_street();
       drive_along_street();
@@ -1069,7 +1090,7 @@ const char* colour (int index) {
   return col;
 }
 
-void rgb_to_hsv(int rgb[3], int hsv[3])
+void rgb_to_hsv(int rgb[3], double hsv[3])
 {
  // Converts an RGB value to HSV. the hue, saturation, value is stored in hsv
  // in that order
@@ -1079,12 +1100,12 @@ void rgb_to_hsv(int rgb[3], int hsv[3])
  // The EV3 colour sensor returns values from [0, 1020]
  for (int i = 0; i < 3; i++)
  {
-  _rgb[i] = rgb[i] / 1024;
+  _rgb[i] = rgb[i] / 1020.0;
  }
  // Find max value of [r', g', b']
  // Find min value of [r', g', b']
- double cmax = 0;
- double cmin = 1;
+ double cmax = 0.0;
+ double cmin = 1.0;
  for (int j = 0; j < 3; j++)
  {
   if (_rgb[j] > cmax)
@@ -1098,6 +1119,7 @@ void rgb_to_hsv(int rgb[3], int hsv[3])
  }
  // Delta = max - min
  double delta = cmax - cmin;
+ fprintf(stderr, "r'g'b' %f %f %f\tcmax %f cmin %f\n", _rgb[0], _rgb[1], _rgb[2], cmax, cmin);
  // Hue:
  //   if delta = 0, hue = 0
  //   elif max is r', hue = 60 * (((g' - b')/delta) mod 6)
@@ -1105,23 +1127,23 @@ void rgb_to_hsv(int rgb[3], int hsv[3])
  //   else max is b', hue = 60 * (((r' - g')/delta) + 4)
  if (delta == 0)
  {
-  hsv[0] = 0;
+  hsv[0] = 0.0;
  } else if (cmax == _rgb[0])
  {
-  hsv[0] = (int) round(60 * fmod(((_rgb[1] - _rgb[2]) / delta), 6));
+  hsv[0] = floor(60 * fmod(((_rgb[1] - _rgb[2]) / delta), 6));
  } else if (cmax == _rgb[1])
  {
-  hsv[0] = (int) round(60 * (((_rgb[2] - _rgb[0]) / delta) + 2));
+  hsv[0] = floor(60 * (((_rgb[2] - _rgb[0]) / delta) + 2));
  } else
  {
-  hsv[0] = (int) round(60 * (((_rgb[0] - _rgb[1]) / delta) + 4));
+  hsv[0] = floor(60 * (((_rgb[0] - _rgb[1]) / delta) + 4));
  }
  // Saturation:
  //   if max is 0, s = 0
  //   else s = delta / max
- hsv[1] = (cmax == 0) ? 0 : ((int) round(delta / cmax));
+ hsv[1] = (cmax == 0.0) ? 0.0 : (delta / cmax);
  // Value = max
- hsv[2] = (int) round(cmax);
+ hsv[2] = cmax;
 }
 
 // Reads the EV3 colour sensor and records the RGB value.
@@ -1134,11 +1156,11 @@ int read_colour_and_detect_failure(int rgb[3])
  int status = BT_read_colour_sensor_RGB(PORT_COLOUR, rgb);
  if (status == -1)
  {
-  fprintf(stderr, "error: EV3 colour sensor responded with an error");
+  // fprintf(stderr, "error: EV3 colour sensor responded with an error");
  }
  else if (status == 0 && rgb[0] == prev_rgb[0] && rgb[1] == prev_rgb[1] && rgb[2] == prev_rgb[2])
  {
-  fprintf(stderr, "error: Read exactly the same colour.\n");
+  // fprintf(stderr, "error: Read exactly the same colour.\n");
   status = -2;
  }
  prev_rgb[0] = rgb[0];
@@ -1151,12 +1173,11 @@ int rgb_to_colour(int rgb[3])
 {
  // Compute the difference between the R G B values seperately for each ref
  // And choose the colour (index) with the minimum sum of absolute differences
- // TODO: within some tolerance?
  // Return -1 if the rgb didn't match a reference colour.
- const int tolerance = 50;
+ const int tolerance = 70;
  int diff_min = tolerance;
  int i_min = -1;
- fprintf(stderr, "Determining colour for RGB %d %d %d.\nAbs differences: ", rgb[0], rgb[1], rgb[2]);
+//  fprintf(stderr, "Determining colour for RGB %d %d %d.\nAbs differences: ", rgb[0], rgb[1], rgb[2]);
  for (int i = 0; i < COLOUR_COUNT; i++)
  {
   int diff = 0;
@@ -1164,18 +1185,18 @@ int rgb_to_colour(int rgb[3])
   {
    diff += abs(rgb[j] - ref_rgb[i][j]);
   }
-  fprintf(stderr, "%s: %d\t", colour(COLOUR[i]), diff);
+  // fprintf(stderr, "%s: %d\t", colour(COLOUR[i]), diff);
   if (diff < diff_min)
   {
     diff_min = diff;
     i_min = i;
   }
  }
- fprintf(stderr, "\nThe colour is %s\n", colour(COLOUR[i_min]));
+//  fprintf(stderr, "\nThe colour is %s\n", colour(COLOUR[i_min]));
  return (-1 ? (i_min == -1) : COLOUR[i_min]);
 }
 
-int read_colour()
+int read_colour(void)
 {
  /*
    Reads the EV3 colour sensor and returns the colour.
