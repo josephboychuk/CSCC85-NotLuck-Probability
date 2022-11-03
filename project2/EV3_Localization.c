@@ -94,11 +94,37 @@
 #define BATTERY 80
 #define BATTERY_ADJUST (1 + (0.01 *(100 - BATTERY)))
 
+/* Constants specific to our robot design */
+char PORT_COLOUR = PORT_1;
+char PORT_GYRO = PORT_2;
+char MOTOR_LEFT = MOTOR_B;
+char MOTOR_RIGHT = MOTOR_A;
+
+// Name of the file containing the RGB (HSV?) reference values
+const char *REF_NAME = "reference.txt";
+// When the colour sensor is not working
+const int COLOUR_FAIL = -2;
+// When the colour is not a map colour
+const int COLOUR_NOT_MAP = -1;
+// Number of map colours
+const int COLOUR_COUNT = 6;
+// The indexes for the map colours, matching the EV3 indexed mode (see bytecodes.h NXTCOLOR)
+// This is also the order the colours should appear in the reference file and local variable
+const int COLOUR[COLOUR_COUNT] = {BLACKCOLOR, BLUECOLOR, GREENCOLOR, YELLOWCOLOR, REDCOLOR, WHITECOLOR};
+
 int map[400][4];            // This holds the representation of the map, up to 20x20
                             // intersections, raster ordered, 4 building colours per
                             // intersection.
 int sx, sy;                 // Size of the map (number of intersections along x and y)
 double beliefs[400][4];     // Beliefs for each location and motion direction
+
+/*
+  RGB reference values for each map colour obtained from calibration
+  The colours are in the same order as constant COLOUR
+*/
+int ref_rgb[COLOUR_COUNT][3];
+// The previous RGB value read from the colour sensor
+int prev_rgb[3] = {-1, -1, -1};
 
 int main(int argc, char *argv[])
 {
@@ -131,7 +157,29 @@ int main(int argc, char *argv[])
   * OPTIONAL TO DO: If you added code for sensor calibration, add just below this comment block any code needed to
   *   read your calibration data for use in your localization code. Skip this if you are not using calibration
   * ****************************************************************************************************************/
- 
+ // Read the reference values from the file and store them
+ FILE *ptr_ref = fopen(REF_NAME, "r");
+ if (!ptr_ref)
+ {
+  fprintf(stderr, "Could not open the reference file: %s\n", REF_NAME);
+  exit(1);
+ }
+ // Initialize
+ for (int i = 0; i < COLOUR_COUNT; i++) {
+  ref_rgb[i][0] = 0;
+  ref_rgb[i][1] = 0;
+  ref_rgb[i][2] = 0;
+ }
+ for (int idx = 0; idx < 6; idx++)
+ {
+  fscanf(ptr_ref, "%d,%d,%d", &ref_rgb[idx][0], &ref_rgb[idx][1], &ref_rgb[idx][2]);
+ }
+ fclose(ptr_ref);
+ fprintf(stderr, "Loaded reference values:\nIndex\tR\tG\tB\n");
+ for (int c = 0; c < COLOUR_COUNT; c++)
+ {
+  fprintf(stderr, "%d\t%d\t%d\t%d\n", COLOUR[c], ref_rgb[c][0], ref_rgb[c][1], ref_rgb[c][2]);
+ }
  // Your code for reading any calibration information should not go below this line //
  
  map_image=readPPMimage(&mapname[0],&rx,&ry);
@@ -911,7 +959,250 @@ void calibrate_sensor(void)
   /************************************************************************************************************************
    *   OIPTIONAL TO DO  -   Complete this function
    ***********************************************************************************************************************/
-  fprintf(stderr,"Calibration function called!\n");  
+  fprintf(stderr,"Calibration function called!\n");
+  // Determines RGB reference values for each map color and save its it to a file named reference.txt in the current directory
+  // Format for reference.txt
+  // Each line is a colour containing: r value, g value, and b value of the colour separated by a comma
+  //    The rgb values are the values returned from the color sensor using BT_read_colour_sensor_RGB
+  // The last line is a blank new line
+  // The colours are always in the order black, blue, green, yellow, red, white
+
+  // Note: the starter code does not open the socket before calling calibration, so we manage the socket here
+  // Open a socket to the EV3 for remote controlling the bot.
+  if (BT_open(HEXKEY)!=0)
+  {
+    fprintf(stderr,"Unable to open comm socket to the EV3, make sure the EV3 kit is powered on, and that the\n");
+    fprintf(stderr," hex key for the EV3 matches the one in EV3_Localization.h\n");
+    exit(1);
+  }
+
+  // number of times to scan each colour
+  const int SCAN_N = 5;
+
+  // Prompt the user to scan all map colours
+  int ref[COLOUR_COUNT][3];
+  for (int idx = 0; idx < COLOUR_COUNT; idx++)
+  {
+    ref[idx][0] = 0;
+    ref[idx][1] = 0;
+    ref[idx][2] = 0;
+  }
+  for (int i = 0; i < COLOUR_COUNT; i++)
+  {
+    // For each color, ask the user to scan 5 different locations and use average R G B values
+    char retry = 1;
+    while (retry)
+    {
+      for (int j = 0; j < SCAN_N; j++)
+      {
+        fprintf(stderr, "(%d/%d) Press ENTER to scan %s...", j+1, SCAN_N, colour(COLOUR[i]));
+        getchar();
+        int rgb[3];
+        BT_read_colour_sensor_RGB(PORT_COLOUR, rgb);
+        fprintf(stderr, "\tGot R %d, G %d, B %d\n", rgb[0], rgb[1], rgb[2]);
+        ref[i][0] += rgb[0];
+        ref[i][1] += rgb[1];
+        ref[i][2] += rgb[2];
+      }
+      fprintf(stderr, "Press ENTER to continue or enter 'n' to retry %s\n", colour(COLOUR[i]));
+      char no;
+      scanf("%c", &no);
+      if (no != 'n')
+      {
+        // Take average
+        ref[i][0] = round((double) ref[i][0] / (double) SCAN_N);
+        ref[i][1] = round((double) ref[i][1] / (double) SCAN_N);
+        ref[i][2] = round((double) ref[i][2] / (double) SCAN_N);
+        retry = 0;
+        fprintf(stderr, "Finished scan for colour %s\n\n", colour(COLOUR[i]));
+      } else {
+        // Retrying so reset
+        ref[i][0] = 0;
+        ref[i][1] = 0;
+        ref[i][2] = 0;
+        fprintf(stderr, "==== RETRYING ====\n");
+      }
+    }
+  }
+  BT_close();
+
+  // Save the reference values to a file
+  fprintf(stderr, "Finished scanning all colours\nSaving reference values to %s...", REF_NAME);
+  FILE *ptr_ref = fopen(REF_NAME, "w");
+  for (int c = 0; c < 6; c++)
+  {
+    fprintf(ptr_ref, "%d,%d,%d\n", ref[c][0], ref[c][1], ref[c][2]);
+  }
+  fclose(ptr_ref);
+  fprintf(stderr, "\tDone.\nCalibration complete\n\n");
+}
+
+// Returns the name of the colour for that index
+const char* colour (int index) {
+  const char* col;
+  switch (index)
+  {
+    case BLACKCOLOR:
+      col = "Black";
+      break;
+    case BLUECOLOR:
+      col = "Blue";
+      break;
+    case GREENCOLOR:
+      col = "Green";
+      break;
+    case YELLOWCOLOR:
+      col = "Yellow";
+      break;
+    case REDCOLOR:
+      col = "Red";
+      break;
+    case WHITECOLOR:
+      col = "White";
+      break;
+    case 7:
+      col = "Brown";
+      break;
+    default:
+      col = "NO COLOUR";
+  }
+  return col;
+}
+
+void rgb_to_hsv(int rgb[3], int hsv[3])
+{
+ // Converts an RGB value to HSV. the hue, saturation, value is stored in hsv
+ // in that order
+ // Based on https://www.rapidtables.com/convert/color/rgb-to-hsv.html
+ // Map R G B to [0, 1] and let this be r' g' b'
+ double _rgb[3];
+ // The EV3 colour sensor returns values from [0, 1020]
+ for (int i = 0; i < 3; i++)
+ {
+  _rgb[i] = rgb[i] / 1024;
+ }
+ // Find max value of [r', g', b']
+ // Find min value of [r', g', b']
+ double cmax = 0;
+ double cmin = 1;
+ for (int j = 0; j < 3; j++)
+ {
+  if (_rgb[j] > cmax)
+  {
+    cmax = _rgb[j];
+  }
+  if (_rgb[j] < cmin)
+  {
+    cmin = _rgb[j];
+  }
+ }
+ // Delta = max - min
+ double delta = cmax - cmin;
+ // Hue:
+ //   if delta = 0, hue = 0
+ //   elif max is r', hue = 60 * (((g' - b')/delta) mod 6)
+ //   elif max is g', hue = 60 * (((b' - r')/delta) + 2)
+ //   else max is b', hue = 60 * (((r' - g')/delta) + 4)
+ if (delta == 0)
+ {
+  hsv[0] = 0;
+ } else if (cmax == _rgb[0])
+ {
+  hsv[0] = (int) round(60 * fmod(((_rgb[1] - _rgb[2]) / delta), 6));
+ } else if (cmax == _rgb[1])
+ {
+  hsv[0] = (int) round(60 * (((_rgb[2] - _rgb[0]) / delta) + 2));
+ } else
+ {
+  hsv[0] = (int) round(60 * (((_rgb[0] - _rgb[1]) / delta) + 4));
+ }
+ // Saturation:
+ //   if max is 0, s = 0
+ //   else s = delta / max
+ hsv[1] = (cmax == 0) ? 0 : ((int) round(delta / cmax));
+ // Value = max
+ hsv[2] = (int) round(cmax);
+}
+
+// Reads the EV3 colour sensor and records the RGB value.
+// Returns 0 on success.
+// Will also detect more color sensor failures and return
+//  -1 if the sensor responded with an error
+//  -2 the same value is read
+int read_colour_and_detect_failure(int rgb[3])
+{
+ int status = BT_read_colour_sensor_RGB(PORT_COLOUR, rgb);
+ if (status == -1)
+ {
+  fprintf(stderr, "error: EV3 colour sensor responded with an error");
+ }
+ else if (status == 0 && rgb[0] == prev_rgb[0] && rgb[1] == prev_rgb[1] && rgb[2] == prev_rgb[2])
+ {
+  fprintf(stderr, "error: Read exactly the same colour.\n");
+  status = -2;
+ }
+ prev_rgb[0] = rgb[0];
+ prev_rgb[1] = rgb[1];
+ prev_rgb[2] = rgb[2];
+ return status;
+}
+
+int rgb_to_colour(int rgb[3])
+{
+ // Compute the difference between the R G B values seperately for each ref
+ // And choose the colour (index) with the minimum sum of absolute differences
+ // TODO: within some tolerance?
+ // Return -1 if the rgb didn't match a reference colour.
+ const int tolerance = 50;
+ int diff_min = tolerance;
+ int i_min = -1;
+ fprintf(stderr, "Determining colour for RGB %d %d %d.\nAbs differences: ", rgb[0], rgb[1], rgb[2]);
+ for (int i = 0; i < COLOUR_COUNT; i++)
+ {
+  int diff = 0;
+  for (int j = 0; j < 3; j++)
+  {
+   diff += abs(rgb[j] - ref_rgb[i][j]);
+  }
+  fprintf(stderr, "%s: %d\t", colour(COLOUR[i]), diff);
+  if (diff < diff_min)
+  {
+    diff_min = diff;
+    i_min = i;
+  }
+ }
+ fprintf(stderr, "\nThe colour is %s\n", colour(COLOUR[i_min]));
+ return (-1 ? (i_min == -1) : COLOUR[i_min]);
+}
+
+int read_colour()
+{
+ /*
+   Reads the EV3 colour sensor and returns the colour.
+   The colour index matches the colour constants defined in this file.
+   If something goes wrong, returns
+    -1  when the colour is not a map colour
+    -2  when the colour sensor is not working
+   The colour sensor is not working if the colour sensor responded with an error
+   or the RGB value is exactly the same as the previous reading.
+ */
+ // TODO decide on HSV or RGB
+ // Read the colour sensor
+ int colour = 0;
+ int rgb[3] = {0, 0, 0};
+ int success = read_colour_and_detect_failure(rgb);
+ // Colour sensor is not working if the EV3 returned an error or the RGB value
+ // is exactly the same as the previous reading
+ if (success != 0)
+ {
+  colour = -2;
+ } else
+ {
+  // Determine what colour the RGB value corresponds to
+  colour = rgb_to_colour(rgb);
+ }
+
+ return colour;
 }
 
 int parse_map(unsigned char *map_img, int rx, int ry)

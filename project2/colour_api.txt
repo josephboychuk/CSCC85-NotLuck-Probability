@@ -1,0 +1,24 @@
+// Colour sensor api for project 3
+
+// Read the color sensor and return the colour it read as an index
+// Detect colour sensor failure and inform the user like return -2
+// If detecting an unexpected colour, return -1
+// Automatically deal with noise in the reading ?
+int read_colour();
+// call colour sensor
+// obtains RGB
+// take difference from all reference values and pick
+
+// colour boundary cases; tune it so the colour returned behaves like this
+// road / inter -> inter
+// road / off road (white or building) -> off road
+// road / boundary -> boundary
+// building / boundary -> boundary
+// inter / building -> inter
+
+// consider doing multiple readings and take average to
+// use. gotta consider if there will be too much lag in the readings
+
+// todo also implement a RGB to HSV function
+// then we can compare the performance of those 2
+
