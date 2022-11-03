@@ -563,9 +563,59 @@ const char* colour (int index) {
   return col;
 }
 
-void to_hsv(int rgb[3], int hsv[3])
+void rgb_to_hsv(int rgb[3], int hsv[3])
 {
- // TODO
+ // Converts an RGB value to HSV. the hue, saturation, value is stored in hsv
+ // in that order
+ // Based on https://www.rapidtables.com/convert/color/rgb-to-hsv.html
+ // Map R G B to [0, 1] and let this be r' g' b'
+ double _rgb[3];
+ // The EV3 colour sensor returns values from [0, 1020]
+ for (int i = 0; i < 3; i++)
+ {
+  _rgb[i] = rgb[i] / 1024;
+ }
+ // Find max value of [r', g', b']
+ // Find min value of [r', g', b']
+ double cmax = 0;
+ double cmin = 1;
+ for (int j = 0; j < 3; j++)
+ {
+  if (_rgb[j] > cmax)
+  {
+    cmax = _rgb[j];
+  }
+  if (_rgb[j] < cmin)
+  {
+    cmin = _rgb[j];
+  }
+ }
+ // Delta = max - min
+ double delta = cmax - cmin;
+ // Hue:
+ //   if delta = 0, hue = 0
+ //   elif max is r', hue = 60 * (((g' - b')/delta) mod 6)
+ //   elif max is g', hue = 60 * (((b' - r')/delta) + 2)
+ //   else max is b', hue = 60 * (((r' - g')/delta) + 4)
+ if (delta == 0)
+ {
+  hsv[0] = 0;
+ } else if (cmax == _rgb[0])
+ {
+  hsv[0] = (int) round(60 * fmod(((_rgb[1] - _rgb[2]) / delta), 6));
+ } else if (cmax == _rgb[1])
+ {
+  hsv[0] = (int) round(60 * (((_rgb[2] - _rgb[0]) / delta) + 2));
+ } else
+ {
+  hsv[0] = (int) round(60 * (((_rgb[0] - _rgb[1]) / delta) + 4));
+ }
+ // Saturation:
+ //   if max is 0, s = 0
+ //   else s = delta / max
+ hsv[1] = (cmax == 0) ? 0 : ((int) round(delta / cmax));
+ // Value = max
+ hsv[2] = (int) round(cmax);
 }
 
 // Reads the EV3 colour sensor and records the RGB value.
