@@ -1,0 +1,6 @@
+# C object files and generated executable
+*.o
+ParticleFilters
+
+# We cannot compile ParticleUtils so we need the provided object file
+!ParticleUtils.o

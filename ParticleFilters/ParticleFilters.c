@@ -378,7 +378,13 @@ void ParticleFilterLoop(void)
   if (first_frame)
   {
    fprintf(stderr,"All set! press enter to start\n");
-   gets(&line[0]);
+   // Replaced the following line since the compiler said it was dangerous
+   //  gets(&line[0]);
+   if (fgets(line, 1024, stdin) == NULL)
+   {
+    // Handle the unused result warning from the compiler
+    fprintf(stderr, "Failed to detect enter being pressed from stdin but starting anyways\n");
+   }
    first_frame=0;
   }
 }
