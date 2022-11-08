@@ -214,6 +214,19 @@ void computeLikelihood(struct particle *p, struct particle *rob, double noise_si
  // TO DO: Complete this function to calculate the particle's
  //        likelihood given the robot's measurements
  ****************************************************************/
+ double error[16];
+ double total_error = 0;
+ // Find actual distance of particle from walls
+ ground_truth(p, map, sx, sy);
+
+ for (int i = 0; i < 16; i++)
+ {
+  // Find disparity for each sonar measurement between particle and robot
+  error[i] = (p->measureD[i] - rob->measureD[i]);
+  total_error += fabs(error[i]);
+ }
+ // Immediately goes to 0 lol
+ p->prob = GaussEval(total_error, noise_sigma);
 
 }
 
@@ -254,6 +267,7 @@ void ParticleFilterLoop(void)
    ******************************************************************/
    double dist = 0.5;
    struct particle *cur = list;
+
    for (int i = 0; i < n_particles; i++)
    {
     move(cur, dist);
@@ -303,6 +317,23 @@ void ParticleFilterLoop(void)
    //        that agree with the robot's position/direction
    //        should be brightest.
    *******************************************************************/
+   // Resets cur to be the head of the list of particles
+   cur = list;
+   double total_likelihood = 0;
+   for (int i = 0; i < n_particles; i++)
+   {
+    computeLikelihood(cur, robot, 20); // noise sigma hardcoded to 20
+    //Now prob is a likelihood value, so sum them to find normalization value
+    total_likelihood += cur->prob;
+
+    cur = cur->next;
+   }
+   // Now normalize the probabilities
+   cur = list;
+   for (int i = 0; i < n_particles; i++)
+   {
+    cur->prob = cur->prob / total_likelihood;
+   }
 
    // Step 4 - Resample particle set based on the probabilities. The goal
    //          of this is to obtain a particle set that better reflect our
