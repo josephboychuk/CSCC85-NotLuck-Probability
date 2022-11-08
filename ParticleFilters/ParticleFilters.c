@@ -157,6 +157,14 @@ void initParticles(void)
  // TO DO: Complete this function to generate an initially random
  //        list of particles.
  ***************************************************************/
+ double normal_prob = 1.0 / n_particles;
+ for (int i = 0; i < n_particles; i++)
+ {
+  struct particle *new_particle = initRobot(map, sx, sy);
+  new_particle->prob = normal_prob;
+  new_particle->next = list;
+  list = new_particle;
+ }
 
 }
 
@@ -244,6 +252,39 @@ void ParticleFilterLoop(void)
    //        You should see a moving robot and sonar figure with
    //        a set of moving particles.
    ******************************************************************/
+   double dist = 0.5;
+   struct particle *cur = list;
+   for (int i = 0; i < n_particles; i++)
+   {
+    move(cur, dist);
+    while (hit(cur, map, sx, sy) == 1)
+    {
+      // Choose a random direction to bounce. The direction is 90 degrees to
+      // either side of the opposite orientation.
+      double ang = cur->theta + (drand48() * 180) - 270.0;
+      if (ang < 0)
+      {
+        ang = ang + 360;
+      }
+      cur->theta = ang;
+      move(cur, dist);
+    }
+    cur = cur->next;
+   }
+
+   move(robot, dist);
+   while (hit(robot, map, sx, sy) == 1)
+   {
+    // Choose a random direction to bounce. The direction is 90 degrees to
+    // either side of the opposite orientation.
+    double ang = robot->theta + (drand48() * 180) - 270.0;
+    if (ang < 0)
+    {
+      ang = ang + 360;
+    }
+    robot->theta = ang;
+    move(robot, dist);
+   }
 
    // Step 2 - The robot makes a measurement - use the sonar
    sonar_measurement(robot,map,sx,sy);
