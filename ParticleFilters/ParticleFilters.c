@@ -453,7 +453,8 @@ void ParticleFilterLoop(void)
    cur = list;
    for (int i = 0; i < n_particles; i++)
    {
-    cur->prob = cur->prob / total_likelihood;
+    // Make sure it doesn't go to 0
+    cur->prob = fmax(cur->prob / total_likelihood, 1e-12);
    }
 
    // Step 4 - Resample particle set based on the probabilities. The goal
@@ -489,6 +490,21 @@ void ParticleFilterLoop(void)
    struct particle *old = list;
    list = resample();
    deleteList(old);
+   // Don't forget to renormalize the sample!
+   struct particle *sample = list;
+   double sample_total = 0.0;
+   while (sample != NULL)
+   {
+    sample_total += sample->prob;
+    sample = sample->next;
+   }
+   sample = list;
+   while (sample != NULL)
+   {
+    // Make sure it doesn't go to 0
+    sample->prob = fmax(sample->prob / sample_total, 1e-12);
+    sample = sample->next;
+   }
   }  // End if (!first_frame)
 
   /***************************************************
