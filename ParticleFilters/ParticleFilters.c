@@ -230,6 +230,126 @@ void computeLikelihood(struct particle *p, struct particle *rob, double noise_si
 
 }
 
+struct particle *resample(void)
+{
+ /*
+   Resamples the current list of particles weighted by their probabilitiy.
+   Returns a pointer to the head of the new linked list of sampled particles.
+   The resulting list contains the same number of particles in the current list.
+ */
+ // We'll use Vose's alias method to do a weighted sample with replacement
+ // Setup the probability and alias tables.
+ // Since the algorithm works with indices for the items, we'll map the indices
+ // to pointers of the particles
+ struct particle *i_to_p[n_particles];
+ double prob_copy[n_particles];
+ double prob[n_particles];
+ int alias[n_particles];
+ typedef struct node {
+  int index;
+  struct node *next;
+ } _node;
+ // Pointers to the head of the linked list of small and large items
+ // These will be used as stacks
+ _node *small = NULL;
+ _node *large = NULL;
+ struct particle *curr = list;
+ // Copy each probability so we dont modify the original, and categorize each
+ // item as small (below the average or 1 when scaled by n) or large
+ for (int i=0; i<n_particles; i++)
+ {
+  i_to_p[i] = curr;
+  double scaled_prob = n_particles * curr->prob;
+  prob_copy[i] = scaled_prob;
+  _node *node = (_node *)malloc(sizeof(_node));
+  node->index = i;
+  if (scaled_prob >= 1.0)
+  {
+    node->next = large;
+    large = node;
+  }
+  else
+  {
+    node->next = small;
+    small = node;
+  }
+  curr = curr->next;
+ }
+ // Redistribute large probabilities into small ones until every bin is full
+ while (small != NULL && large != NULL)
+ {
+  // Remove a small and a large item from their lists
+  _node *s = small;
+  int small_i = s->index;
+  small = small->next;
+  free(s);
+  _node *l = large;
+  int large_i = l->index;
+  large = large->next;
+  // Don't free the large item yet. It will be added to either list
+  // Fill the small probability bin with the large one
+  prob[small_i] = prob_copy[small_i];
+  alias[small_i] = large_i;
+  prob_copy[large_i] = prob_copy[large_i] + prob_copy[small_i] - 1;
+  // If the modified "large" probability is small, put it in small; else large
+  if (prob_copy[large_i] < 1.0)
+  {
+    l->next = small;
+    small = l;
+  }
+  else
+  {
+    l->next = large;
+    large = l;
+  }
+ }
+ while (large != NULL)
+ {
+  _node *l = large;
+  prob[l->index] = 1.0;
+  large = large->next;
+  free(l);
+ }
+ // Due to rounding error, small might have items leftover. With exact
+ // arithmetic, they should have average probability or 1 when scaled by n
+ while (small != NULL)
+ {
+  _node *s = small;
+  prob[s->index] = 1.0;
+  small = small->next;
+  free(s);
+ }
+
+ // Sample the particles
+ struct particle *new_head = NULL;
+ struct particle *sample;
+ for (int i=0; i<n_particles; i++)
+ {
+  sample = (struct particle *)malloc(sizeof(struct particle));
+  // Choose a random bin from the probability table
+  int random_i = floor(drand48() * n_particles);
+  // Do a biased coin toss with heads probability prob[random_i] to choose
+  // a particle
+  struct particle *p;
+  if (drand48() < prob[random_i])
+  {
+    p = i_to_p[random_i];
+  }
+  else
+  {
+    p = i_to_p[alias[random_i]];
+  }
+  // Copy the particle and add it to the list of new particles
+  sample->x = p->x;
+  sample->y = p->y;
+  sample->theta = p->theta;
+  sample->prob = p->prob;
+  sample->next = new_head;
+  new_head = sample;
+ }
+ return new_head;
+}
+
 void ParticleFilterLoop(void)
 {
  /*
@@ -322,7 +442,8 @@ void ParticleFilterLoop(void)
    double total_likelihood = 0;
    for (int i = 0; i < n_particles; i++)
    {
-    computeLikelihood(cur, robot, 20); // noise sigma hardcoded to 20
+    // TODO UNCOMMENT. proceed with uniform prob since this is buggy atm
+    // computeLikelihood(cur, robot, 20); // noise sigma hardcoded to 20
     //Now prob is a likelihood value, so sum them to find normalization value
     total_likelihood += cur->prob;
 
@@ -365,7 +486,9 @@ void ParticleFilterLoop(void)
    //        Hopefully the largest cluster will be on and around
    //        the robot's actual location/direction.
    *******************************************************************/
-
+   struct particle *old = list;
+   list = resample();
+   deleteList(old);
   }  // End if (!first_frame)
 
   /***************************************************
