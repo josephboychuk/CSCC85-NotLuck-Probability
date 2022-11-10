@@ -1,0 +1,23 @@
+# Generated files from running ./configure (uses GNU automake)
+.dirstamp
+.deps/
+aclocal.m4
+autom4te.cache/
+config.guess
+config.log
+config.sub
+configure
+configure~
+include/
+Makefile
+Makefile.in
+stamp-h1
+
+# Generated C files
+*.o
+
+# Executable program
+roboSoccer
+
+# IDE files
+.vscode
