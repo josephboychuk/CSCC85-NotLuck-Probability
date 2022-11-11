@@ -226,7 +226,7 @@ void computeLikelihood(struct particle *p, struct particle *rob, double noise_si
   total_error += fabs(error[i]);
  }
  // Immediately goes to 0 lol
- p->prob = GaussEval(total_error, noise_sigma);
+ p->prob = GaussEval(total_error/16, noise_sigma);
 
 }
 
@@ -388,7 +388,7 @@ void ParticleFilterLoop(void)
    //        You should see a moving robot and sonar figure with
    //        a set of moving particles.
    ******************************************************************/
-   double dist = 0.5;
+   double dist = 0.25;
    struct particle *cur = list;
 
    for (int i = 0; i < n_particles; i++)
@@ -398,13 +398,15 @@ void ParticleFilterLoop(void)
     {
       // Choose a random direction to bounce. The direction is 90 degrees to
       // either side of the opposite orientation.
-      double ang = cur->theta + (drand48() * 180) - 270.0;
+      int count = 0;
+      double ang = cur->theta + (drand48() * 180) - 270.0 + count;
       if (ang < 0)
       {
         ang = ang + 360;
       }
       cur->theta = ang;
       move(cur, dist);
+      count++;
     }
     cur = cur->next;
    }
@@ -446,7 +448,7 @@ void ParticleFilterLoop(void)
    for (int i = 0; i < n_particles; i++)
    {
     // TODO UNCOMMENT. proceed with uniform prob since this is buggy atm
-    // computeLikelihood(cur, robot, 20); // noise sigma hardcoded to 20
+    computeLikelihood(cur, robot, 20); // noise sigma hardcoded to 20
     //Now prob is a likelihood value, so sum them to find normalization value
     total_likelihood += cur->prob;
 
