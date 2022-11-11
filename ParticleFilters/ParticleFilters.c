@@ -226,7 +226,7 @@ void computeLikelihood(struct particle *p, struct particle *rob, double noise_si
   total_error += fabs(error[i]);
  }
  // Immediately goes to 0 lol
- p->prob = GaussEval(total_error/16, noise_sigma);
+ p->prob = GaussEval(total_error/8, noise_sigma);
 
 }
 
@@ -395,7 +395,7 @@ void ParticleFilterLoop(void)
    {
     move(cur, dist);
     int count = 0;
-    while (hit(cur, map, sx, sy) == 1 && count <= 90)
+    while (hit(cur, map, sx, sy) == 1)
     {
       // Choose a random direction to bounce. The direction is 90 degrees to
       // either side of the opposite orientation.
