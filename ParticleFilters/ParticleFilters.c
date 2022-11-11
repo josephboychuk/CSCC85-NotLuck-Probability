@@ -394,11 +394,11 @@ void ParticleFilterLoop(void)
    for (int i = 0; i < n_particles; i++)
    {
     move(cur, dist);
-    while (hit(cur, map, sx, sy) == 1)
+    int count = 0;
+    while (hit(cur, map, sx, sy) == 1 && count <= 90)
     {
       // Choose a random direction to bounce. The direction is 90 degrees to
       // either side of the opposite orientation.
-      int count = 0;
       double ang = cur->theta + (drand48() * 180) - 270.0 + count;
       if (ang < 0)
       {
