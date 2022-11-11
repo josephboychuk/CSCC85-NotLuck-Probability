@@ -254,15 +254,16 @@ struct particle *resample(void)
  _node *small = NULL;
  _node *large = NULL;
  struct particle *curr = list;
+ int idx = 0;
  // Copy each probability so we dont modify the original, and categorize each
  // item as small (below the average or 1 when scaled by n) or large
- for (int i=0; i<n_particles; i++)
+ while (curr != NULL)
  {
-  i_to_p[i] = curr;
+  i_to_p[idx] = curr;
   double scaled_prob = n_particles * curr->prob;
-  prob_copy[i] = scaled_prob;
+  prob_copy[idx] = scaled_prob;
   _node *node = (_node *)malloc(sizeof(_node));
-  node->index = i;
+  node->index = idx;
   if (scaled_prob >= 1.0)
   {
     node->next = large;
@@ -274,6 +275,7 @@ struct particle *resample(void)
     small = node;
   }
   curr = curr->next;
+  idx = idx + 1;
  }
  // Redistribute large probabilities into small ones until every bin is full
  while (small != NULL && large != NULL)
@@ -326,12 +328,13 @@ struct particle *resample(void)
  for (int i=0; i<n_particles; i++)
  {
   sample = (struct particle *)malloc(sizeof(struct particle));
-  // Choose a random bin from the probability table
-  int random_i = floor(drand48() * n_particles);
+  // Choose a random bin from the probability table; let this be random_i
   // Do a biased coin toss with heads probability prob[random_i] to choose
-  // a particle
+  // the particle from that bin and 1 - prob[random_i] to choose the alias
+  double random_p = drand48();
+  int random_i = floor(random_p * n_particles);
   struct particle *p;
-  if (drand48() < prob[random_i])
+  if (random_p < prob[random_i])
   {
     p = i_to_p[random_i];
   }
