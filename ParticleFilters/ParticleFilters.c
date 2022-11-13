@@ -49,6 +49,10 @@ int RESETflag;			// RESET particles
 /**********************************************************
  PROGRAM CODE
 **********************************************************/
+// Additional local functions to help implementation
+// Bounces a particle off the wall if it is stuck in the wall
+void bounce(struct particle *p, double dist);
+
 int main(int argc, char *argv[])
 {
  /*
@@ -334,24 +338,59 @@ struct particle *resample(void)
   // the particle from that bin and 1 - prob[random_i] to choose the alias
   double random_p = drand48();
   int random_i = floor(random_p * n_particles);
-  struct particle *p;
+  struct particle *choice;
   if (random_p < prob[random_i])
   {
-    p = i_to_p[random_i];
+    choice = i_to_p[random_i];
   }
   else
   {
-    p = i_to_p[alias[random_i]];
+    choice = i_to_p[alias[random_i]];
   }
   // Copy the particle and add it to the list of new particles
-  sample->x = p->x;
-  sample->y = p->y;
-  sample->theta = p->theta;
-  sample->prob = p->prob;
+  sample->x = choice->x;
+  sample->y = choice->y;
+  sample->theta = choice->theta;
+  sample->prob = choice->prob;
   sample->next = new_head;
   new_head = sample;
  }
  return new_head;
+}
+
+void bounce(struct particle *p, double dist)
+{
+ /*
+    If the particle is stuck in the wall after moving, moves the particle out
+    of the wall in a random direction (bounce it off the wall).
+
+    `dist` is how much to move the particle by.
+ */
+ const double ORIGINAL_X = p->x;
+ const double ORIGINAL_Y = p->y;
+ const double ORIGINAL_THETA = p->theta;
+ double ang;
+ // Bounce in a random direction <= HALF degrees to either side of the opposite
+ // direction
+ const double RANGE = 90.0;
+ const double HALF = 45.0;
+ while (hit(p, map, sx, sy) == 1)
+ {
+  // It's possible that a particle can still be stuck in the wall after moving
+  // so reset to original position and angle to try again
+  p->x = ORIGINAL_X;
+  p->y = ORIGINAL_Y;
+  p->theta = ORIGINAL_THETA;
+  // Choose a random direction to bounce. The direction is `half` degrees to
+  // either side of the opposite orientation.
+  ang = p->theta + (drand48() * RANGE) - HALF - 180.0;
+  if (ang < 0.0)
+  {
+    ang = ang + 360.0;
+  }
+  p->theta = ang;
+  move(p, dist);
+ }
 }
 
 void ParticleFilterLoop(void)
@@ -395,33 +434,17 @@ void ParticleFilterLoop(void)
    for (int i = 0; i < n_particles; i++)
    {
     move(cur, dist);
-    while (hit(cur, map, sx, sy) == 1)
+    if (hit(cur, map, sx, sy) == 1)
     {
-      // Choose a random direction to bounce. The direction is 45 degrees to
-      // either side of the opposite orientation.
-      double ang = cur->theta + (drand48() * 90.0) - 45.0 - 180.0;
-      if (ang < 0.0)
-      {
-        ang = ang + 360.0;
-      }
-      cur->theta = ang;
-      move(cur, dist);
+     bounce(cur, dist);
     }
     cur = cur->next;
    }
 
    move(robot, dist);
-   while (hit(robot, map, sx, sy) == 1)
+   if (hit(robot, map, sx, sy) == 1)
    {
-    // Choose a random direction to bounce. The direction is 45 degrees to
-    // either side of the opposite orientation.
-    double ang = robot->theta + (drand48() * 90.0) - 45.0 - 180.0;
-    if (ang < 0.0)
-    {
-      ang = ang + 360.0;
-    }
-    robot->theta = ang;
-    move(robot, dist);
+    bounce(robot, dist);
    }
 
    // Step 2 - The robot makes a measurement - use the sonar
