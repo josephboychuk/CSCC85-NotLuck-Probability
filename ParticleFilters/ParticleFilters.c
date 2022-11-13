@@ -214,20 +214,21 @@ void computeLikelihood(struct particle *p, struct particle *rob, double noise_si
  // TO DO: Complete this function to calculate the particle's
  //        likelihood given the robot's measurements
  ****************************************************************/
- double error[16];
- double total_error = 0;
  // Find actual distance of particle from walls
  ground_truth(p, map, sx, sy);
-
+ // Likelihood is the product of the Gaussian pdf's for each error
+ // Since the pdf for x=0 is only ~0.02, we'll make it relative to that so
+ // we aren't multiplying too small for low errors
+ double error;
+ const double MAX_GAUSSIAN = GaussEval(0, noise_sigma);
  for (int i = 0; i < 16; i++)
  {
-  // Find disparity for each sonar measurement between particle and robot
-  error[i] = (p->measureD[i] - rob->measureD[i]);
-  total_error += fabs(error[i]);
+  // compute individual probability from the gaussian
+  error = (p->measureD[i] - rob->measureD[i]);
+  p->prob *= GaussEval(error, noise_sigma) / MAX_GAUSSIAN;
  }
- // Immediately goes to 0 lol
- p->prob = GaussEval(total_error/8, noise_sigma);
-
+ // Make sure it doesn't go to 0
+ p->prob += 1e-28;
 }
 
 struct particle *resample(void)
@@ -394,19 +395,17 @@ void ParticleFilterLoop(void)
    for (int i = 0; i < n_particles; i++)
    {
     move(cur, dist);
-    int count = 0;
     while (hit(cur, map, sx, sy) == 1)
     {
-      // Choose a random direction to bounce. The direction is 90 degrees to
+      // Choose a random direction to bounce. The direction is 45 degrees to
       // either side of the opposite orientation.
-      double ang = cur->theta + (drand48() * 180) - 270.0 + count;
-      if (ang < 0)
+      double ang = cur->theta + (drand48() * 90.0) - 45.0 - 180.0;
+      if (ang < 0.0)
       {
-        ang = ang + 360;
+        ang = ang + 360.0;
       }
       cur->theta = ang;
       move(cur, dist);
-      count++;
     }
     cur = cur->next;
    }
@@ -414,12 +413,12 @@ void ParticleFilterLoop(void)
    move(robot, dist);
    while (hit(robot, map, sx, sy) == 1)
    {
-    // Choose a random direction to bounce. The direction is 90 degrees to
+    // Choose a random direction to bounce. The direction is 45 degrees to
     // either side of the opposite orientation.
-    double ang = robot->theta + (drand48() * 180) - 270.0;
-    if (ang < 0)
+    double ang = robot->theta + (drand48() * 90.0) - 45.0 - 180.0;
+    if (ang < 0.0)
     {
-      ang = ang + 360;
+      ang = ang + 360.0;
     }
     robot->theta = ang;
     move(robot, dist);
@@ -458,8 +457,8 @@ void ParticleFilterLoop(void)
    cur = list;
    for (int i = 0; i < n_particles; i++)
    {
-    // Make sure it doesn't go to 0
-    cur->prob = fmax(cur->prob / total_likelihood, 1e-12);
+    cur->prob = cur->prob / total_likelihood;
+    cur = cur->next;
    }
 
    // Step 4 - Resample particle set based on the probabilities. The goal
@@ -506,8 +505,7 @@ void ParticleFilterLoop(void)
    sample = list;
    while (sample != NULL)
    {
-    // Make sure it doesn't go to 0
-    sample->prob = fmax(sample->prob / sample_total, 1e-12);
+    sample->prob = sample->prob / sample_total;
     sample = sample->next;
    }
   }  // End if (!first_frame)
