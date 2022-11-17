@@ -150,5 +150,12 @@ struct displayList *clearDP(struct displayList *head);
    Add headers for your own functions implementing the bot's soccer
    playing functionality below.
 *****************************************************************************/
+// TODO REMOVE
+void test(struct RoboAI *ai, struct blob *blobs);
+double dist(double x1, double y1, double x2, double y2);
+// Rotate robot towards the direction given by the vector [dx, dy]
+void rotate(struct RoboAI *ai, struct blob *blobs, double dx, double dy, char power);
+// Assuming the robot is facing the ball, drive straight towards ball
+void move_to_ball(struct RoboAI *ai, struct blob *blobs, char power);
 
 #endif

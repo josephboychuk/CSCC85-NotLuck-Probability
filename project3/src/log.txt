@@ -1,0 +1,217 @@
+Request to connect to device 00:16:53:55:DB:D3
+Camera initialization!
+Camera initialized! grabbing frames at 1280 x 720
+Entering main loop...
+Initialized!
+Buffer allocation for images
+Successfully read background and H matrix from file
+Read offset data from file
+Adjustment amounts for bot 1
+At upper-field (h=114.424022), bot is at 71.986608, adjustment=42.437415
+At lower-field (h=554.833575), bot is at 558.750708, adjustment=-3.917134
+Adjustment amounts for bot 2
+At upper-field (h=114.424022), bot is at 80.447670, adjustment=33.976353
+At lower-field (h=554.833575), bot is at 546.309354, adjustment=8.524221
+Read colour calibration data from file
+Reference colour 0: 0.000000, 40.320513, 255.000000, Hue=4.023208
+Reference colour 1: 255.000000, 72.348837, 0.000000, Hue=0.297112
+Reference colour 2: 183.750000, 255.000000, 0.000000, Hue=1.339797
+Reference colour 3: 255.000000, 203.354430, 0.000000, Hue=0.835107
+Initial state, self-id in progress...
+Successfully identified self blob at (1062.495809,399.065789)
+Successfully identified opponent blob at (677.227468,554.732189)
+Successfully identified ball blob at (632.408179,132.136939)
+Initial state, self-id in progress...
+Successfully identified self blob at (1062.207329,400.122366)
+Successfully identified opponent blob at (677.424710,554.679966)
+Successfully identified ball blob at (632.317611,131.637785)
+Initial state, self-id in progress...
+Successfully identified self blob at (1062.508186,399.156110)
+Successfully identified opponent blob at (677.187683,554.743695)
+Successfully identified ball blob at (632.476378,132.101050)
+Initial state, self-id in progress...
+Successfully identified self blob at (1062.739972,398.899135)
+Successfully identified opponent blob at (677.447824,554.793015)
+Successfully identified ball blob at (632.243793,132.350502)
+Initial state, self-id in progress...
+Successfully identified self blob at (1062.429421,398.720560)
+Successfully identified opponent blob at (677.729701,554.787944)
+Successfully identified ball blob at (633.231797,132.364589)
+Self-ID complete. Current position: (1062.429421,398.720560), current heading: [0.000000, 0.000000], blob direction=[0.866930, 0.498430], AI state=101
+dx 0.860085	dy 0.510150	radians 0.535359	degrees 30.673826
+dx 0.857916	dy 0.513790	radians 0.539597	degrees 30.916604
+dx 0.861370	dy 0.507979	radians 0.532837	degrees 30.529298
+dx 0.855126	dy 0.518421	radians 0.545003	degrees 31.226361
+dx 0.859536	dy 0.511075	radians 0.536436	degrees 30.735494
+dx 0.857713	dy 0.514129	radians 0.539992	degrees 30.939263
+dx 0.859652	dy 0.510880	radians 0.536208	degrees 30.722458
+dx 0.861414	dy 0.507904	radians 0.532749	degrees 30.524286
+dx 0.860606	dy 0.509271	radians 0.534338	degrees 30.615302
+dx 0.862881	dy 0.505408	radians 0.529854	degrees 30.358424
+dx 0.862152	dy 0.506649	radians 0.531294	degrees 30.440905
+dx 0.859125	dy 0.511766	radians 0.537239	degrees 30.781521
+dx 0.864783	dy 0.502145	radians 0.526078	degrees 30.142025
+dx 0.862547	dy 0.505978	radians 0.530515	degrees 30.396274
+dx 0.861752	dy 0.507330	radians 0.532084	degrees 30.486154
+dx 0.861584	dy 0.507615	radians 0.532414	degrees 30.505098
+dx 0.861548	dy 0.507677	radians 0.532486	degrees 30.509197
+dx 0.861998	dy 0.506911	radians 0.531598	degrees 30.458317
+dx 0.860581	dy 0.509314	radians 0.534387	degrees 30.618127
+dx 0.858392	dy 0.512995	radians 0.538670	degrees 30.863534
+dx 0.860693	dy 0.509123	radians 0.534166	degrees 30.605462
+dx 0.864070	dy 0.503372	radians 0.527497	degrees 30.223329
+dx 0.858420	dy 0.512947	radians 0.538615	degrees 30.860350
+dx 0.862079	dy 0.506775	radians 0.531439	degrees 30.449232
+dx 0.858205	dy 0.513307	radians 0.539034	degrees 30.884348
+dx 0.865522	dy 0.500870	radians 0.524604	degrees 30.057581
+dx 0.861936	dy 0.507018	radians 0.531721	degrees 30.465374
+dx 0.862938	dy 0.505309	radians 0.529740	degrees 30.351886
+dx 0.860300	dy 0.509789	radians 0.534939	degrees 30.649749
+dx 0.857640	dy 0.514251	radians 0.540134	degrees 30.947413
+dx 0.860336	dy 0.509727	radians 0.534868	degrees 30.645680
+dx 0.858527	dy 0.512769	radians 0.538406	degrees 30.848416
+dx 0.857983	dy 0.513679	radians 0.539467	degrees 30.909179
+dx 0.861302	dy 0.508093	radians 0.532970	degrees 30.536908
+dx 0.863128	dy 0.504985	radians 0.529365	degrees 30.330360
+dx 0.863511	dy 0.504330	radians 0.528606	degrees 30.286919
+dx 0.859768	dy 0.510685	radians 0.535981	degrees 30.709459
+dx 0.863519	dy 0.504317	radians 0.528590	degrees 30.286000
+dx 0.864148	dy 0.503237	radians 0.527341	degrees 30.214420
+dx 0.859659	dy 0.510868	radians 0.536195	degrees 30.721695
+dx 0.859081	dy 0.511839	radians 0.537324	degrees 30.786406
+dx 0.860458	dy 0.509522	radians 0.534629	degrees 30.631998
+dx 0.837159	dy 0.546960	radians 0.578728	degrees 33.158677
+dx 0.815788	dy 0.578350	radians 0.616705	degrees 35.334603
+dx 0.776961	dy 0.629549	radians 0.680972	degrees 39.016836
+dx 0.746851	dy 0.664992	radians 0.727483	degrees 41.681697
+dx 0.724671	dy 0.689095	radians 0.760240	degrees 43.558552
+dx 0.687186	dy 0.726482	radians 0.813188	degrees 46.592251
+dx 0.634828	dy 0.772653	radians 0.883010	degrees 50.592750
+dx 0.597356	dy 0.801976	radians 0.930596	degrees 53.319203
+dx 0.564162	dy 0.825664	radians 0.971378	degrees 55.655864
+dx 0.539793	dy 0.841798	radians 1.000606	degrees 57.330473
+dx 0.502028	dy 0.864852	radians 1.044855	degrees 59.865755
+dx 0.462079	dy 0.886839	radians 1.090458	degrees 62.478662
+dx 0.424844	dy 0.905267	radians 1.132007	degrees 64.859235
+dx 0.383539	dy 0.923525	radians 1.177171	degrees 67.446947
+dx 0.348870	dy 0.937171	radians 1.214431	degrees 69.581756
+dx 0.317968	dy 0.948101	radians 1.247211	degrees 71.459911
+dx 0.279265	dy 0.960214	radians 1.287768	degrees 73.783672
+dx 0.238051	dy 0.971253	radians 1.330438	degrees 76.228477
+dx 0.196031	dy 0.980598	radians 1.373488	degrees 78.695067
+dx 0.147665	dy 0.989037	radians 1.422589	degrees 81.508343
+dx 0.120438	dy 0.992721	radians 1.450065	degrees 83.082630
+dx 0.116383	dy 0.993204	radians 1.454149	degrees 83.316592
+dx 0.117880	dy 0.993028	radians 1.452641	degrees 83.230210
+dx 0.083493	dy 0.996508	radians 1.487206	degrees 85.210630
+dx 0.059658	dy 0.998219	radians 1.511103	degrees 86.579842
+dx 0.060945	dy 0.998141	radians 1.509813	degrees 86.505923
+dx 0.072067	dy 0.997400	radians 1.498667	degrees 85.867281
+dx 0.074017	dy 0.997257	radians 1.496712	degrees 85.755264
+dx 0.077745	dy 0.996973	radians 1.492973	degrees 85.541049
+dx 0.073457	dy 0.997298	radians 1.497273	degrees 85.787412
+dx 0.076265	dy 0.997088	radians 1.494458	degrees 85.626108
+dx 0.078139	dy 0.996942	radians 1.492578	degrees 85.518407
+dx 0.075727	dy 0.997129	radians 1.494997	degrees 85.657015
+dx 0.074670	dy 0.997208	radians 1.496057	degrees 85.717741
+dx 0.074621	dy 0.997212	radians 1.496105	degrees 85.720529
+dx 0.073357	dy 0.997306	radians 1.497373	degrees 85.793153
+dx 0.086451	dy 0.996256	radians 1.484237	degrees 85.040523
+dx 0.076368	dy 0.997080	radians 1.494354	degrees 85.620162
+dx 0.072344	dy 0.997380	radians 1.498389	degrees 85.851349
+dx 0.049126	dy 0.998793	radians 1.521651	degrees 87.184173
+dx 0.034129	dy 0.999417	radians 1.536661	degrees 88.044197
+dx 0.006423	dy 0.999979	radians 1.564373	degrees 89.631971
+dx 0.030170	dy -0.999545	radians -1.540622	degrees -88.271144
+dx 0.099392	dy -0.995048	radians -1.471240	degrees -84.295861
+dx 0.150605	dy -0.988594	radians -1.419616	degrees -81.338005
+dx 0.195406	dy -0.980722	radians -1.374125	degrees -78.731540
+dx 0.230943	dy -0.972967	radians -1.337749	degrees -76.647397
+dx 0.270970	dy -0.962588	radians -1.296396	degrees -74.278004
+dx 0.326404	dy -0.945230	radians -1.238300	degrees -70.949357
+dx 0.382295	dy -0.924041	radians -1.178518	degrees -67.524113
+dx 0.438992	dy -0.898491	radians -1.116320	degrees -63.960434
+dx 0.504921	dy -0.863166	radians -1.041506	degrees -59.673904
+dx 0.548269	dy -0.836302	radians -0.990504	degrees -56.751673
+dx 0.563456	dy -0.826146	radians -0.972233	degrees -55.704838
+dx 0.614208	dy -0.789144	radians -0.909415	degrees -52.105620
+dx 0.648231	dy -0.761443	radians -0.865537	degrees -49.591606
+dx 0.674854	dy -0.737952	radians -0.830030	degrees -47.557214
+dx 0.739921	dy -0.672694	radians -0.737844	degrees -42.275348
+dx 0.785034	dy -0.619452	radians -0.668045	degrees -38.276144
+dx 0.836177	dy -0.548459	radians -0.580521	degrees -33.261383
+dx 0.860987	dy -0.508626	radians -0.533589	degrees -30.572379
+dx 0.869999	dy -0.493053	radians -0.515596	degrees -29.541448
+dx 0.890309	dy -0.455356	radians -0.472772	degrees -27.087848
+dx 0.899044	dy -0.437859	radians -0.453216	degrees -25.967360
+dx 0.893303	dy -0.449455	radians -0.466155	degrees -26.708735
+dx 0.902229	dy -0.431258	radians -0.445887	degrees -25.547427
+dx 0.897437	dy -0.441143	radians -0.456871	degrees -26.176802
+dx 0.899714	dy -0.436479	radians -0.451682	degrees -25.879474
+dx 0.897693	dy -0.440621	radians -0.456290	degrees -26.143499
+dx 0.898609	dy -0.438751	radians -0.454208	degrees -26.024212
+dx 0.907745	dy -0.419523	radians -0.432920	degrees -24.804493
+dx 0.893417	dy -0.449228	radians -0.465901	degrees -26.694164
+dx 0.905095	dy -0.425210	radians -0.439194	degrees -25.163949
+dx 0.897725	dy -0.440556	radians -0.456218	degrees -26.139354
+dx 0.917392	dy -0.397984	radians -0.409318	degrees -23.452201
+dx 0.921621	dy -0.388091	radians -0.398560	degrees -22.835796
+dx 0.922567	dy -0.385838	radians -0.396116	degrees -22.695763
+dx 0.924966	dy -0.380049	radians -0.389849	degrees -22.336709
+dx 0.937706	dy -0.347430	radians -0.354829	degrees -20.330228
+dx 0.952967	dy -0.303075	radians -0.307918	degrees -17.642407
+dx 0.984092	dy -0.177659	radians -0.178607	degrees -10.233440
+dx 0.994524	dy -0.104511	radians -0.104702	degrees -5.999011
+dx 0.997506	dy -0.070576	radians -0.070635	degrees -4.047076
+dx 0.998558	dy -0.053691	radians -0.053717	degrees -3.077762
+dx 0.999397	dy -0.034718	radians -0.034725	degrees -1.989578
+dx 0.999929	dy 0.011887	radians 0.011887	degrees 0.681090
+dx 0.997922	dy 0.064426	radians 0.064471	degrees 3.693919
+dx 0.994909	dy 0.100781	radians 0.100952	degrees 5.784152
+dx 0.990916	dy 0.134480	radians 0.134888	degrees 7.728535
+dx 0.984106	dy 0.177582	radians 0.178528	degrees 10.228922
+dx 0.970488	dy 0.241149	radians 0.243550	degrees 13.954369
+dx 0.955040	dy 0.296476	radians 0.301001	degrees 17.246093
+dx 0.937098	dy 0.349067	radians 0.356575	degrees 20.430236
+dx 0.931662	dy 0.363326	radians 0.371835	degrees 21.304581
+dx 0.932536	dy 0.361076	radians 0.369422	degrees 21.166305
+dx 0.934274	dy 0.356555	radians 0.364578	degrees 20.888762
+dx 0.935450	dy 0.353459	radians 0.361266	degrees 20.699042
+dx 0.936964	dy 0.349426	radians 0.356958	degrees 20.452184
+dx 0.937043	dy 0.349214	radians 0.356732	degrees 20.439221
+dx 0.936130	dy 0.351654	radians 0.359337	degrees 20.588497
+dx 0.935382	dy 0.353640	radians 0.361459	degrees 20.710103
+dx 0.935323	dy 0.353794	radians 0.361625	degrees 20.719565
+dx 0.934804	dy 0.355163	radians 0.363089	degrees 20.803459
+dx 0.933329	dy 0.359023	radians 0.367221	degrees 21.040199
+dx 0.920974	dy 0.389624	radians 0.400224	degrees 22.931135
+dx 0.900232	dy 0.435411	radians 0.450495	degrees 25.811436
+dx 0.869010	dy 0.494795	radians 0.517599	degrees 29.656237
+dx 0.840882	dy 0.541218	radians 0.571885	degrees 32.766589
+dx 0.827700	dy 0.561171	radians 0.595800	degrees 34.136852
+dx 0.809327	dy 0.587358	radians 0.627791	degrees 35.969767
+dx 0.790672	dy 0.612240	radians 0.658891	degrees 37.751649
+dx 0.752929	dy 0.658102	radians 0.718295	degrees 41.155285
+dx 0.688532	dy 0.725206	radians 0.811334	degrees 46.485986
+dx 0.610195	dy 0.792251	radians 0.914490	degrees 52.396413
+dx 0.538452	dy 0.842656	radians 1.002197	degrees 57.421650
+dx 0.490789	dy 0.871279	radians 1.057802	degrees 60.607578
+dx 0.440426	dy 0.897789	radians 1.114723	degrees 63.868906
+dx 0.350852	dy 0.936431	radians 1.212315	degrees 69.460547
+dx 0.240750	dy 0.970587	radians 1.327658	degrees 76.069174
+dx 0.109910	dy 0.993942	radians 1.460664	degrees 83.689865
+dx 0.044268	dy 0.999020	radians 1.526514	degrees 87.462787
+dx 0.011384	dy -0.999935	radians -1.559412	degrees -89.347738
+dx 0.072083	dy -0.997399	radians -1.498651	degrees -85.866391
+dx 0.159328	dy -0.987226	radians -1.410786	degrees -80.832080
+dx 0.164406	dy -0.986393	radians -1.405640	degrees -80.537253
+dx 0.168163	dy -0.985759	radians -1.401831	degrees -80.318976
+dx 0.172539	dy -0.985003	radians -1.397389	degrees -80.064520
+dx 0.168507	dy -0.985700	radians -1.401481	degrees -80.298974
+dx 0.166696	dy -0.986008	radians -1.403319	degrees -80.404250
+dx 0.170175	dy -0.985414	radians -1.399789	degrees -80.202009
+dx 0.173958	dy -0.984753	radians -1.395949	degrees -79.981988
+dx 0.165132	dy -0.986272	radians -1.404905	degrees -80.495107
+dx 0.168839	dy -0.985644	radians -1.401144	degrees -80.279657
+dx 0.158737	dy -0.987321	radians -1.411385	degrees -80.866411
+dx 0.166676	dy -0.986012	radians -1.403338	degrees -80.405362

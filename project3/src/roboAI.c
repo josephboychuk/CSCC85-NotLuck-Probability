@@ -774,7 +774,132 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
    the bot is supposed to be doing.
   *****************************************************************************/
 //  fprintf(stderr,"Just trackin'!\n");	// bot, opponent, and ball.
-//  track_agents(ai,blobs);		// Currently, does nothing but endlessly track
+  // TODO figure out what the *state param is used for
+  double old_scx = ai->st.old_scx;
+  double old_scy = ai->st.old_scy;
+  track_agents(ai,blobs);		// Currently, does nothing but endlessly track
+  // test(ai, blobs);
+
+  if (ai->st.state == 101)
+  {
+    fprintf(stderr, "[101] rotate towards ball\n");
+    // Rotate towards ball
+    // TODO deal with noisy data from image capture!
+    double face_ball_dx;
+    double face_ball_dy;
+    face_ball_dx = ai->st.ball->cx - ai->st.self->cx;
+    face_ball_dy = ai->st.ball->cy - ai->st.self->cy;
+    ai->DPhead = clearDP(ai->DPhead);
+    rotate(ai, blobs, face_ball_dx, face_ball_dy, 20);
+    fprintf(stderr, "goal atan2 heading: %f, robot: %f\n", atan2(face_ball_dx, face_ball_dy) * 180.0 / PI, atan2(ai->st.sdx, ai->st.sdy) * 180.0 / PI);
+    // Facing the ball, within a 2 degrees
+    if (ai->st.ball->cx > ai->st.self->cx)
+    {
+      if (fabs(atan2(ai->st.sdx, ai->st.sdy) - atan2(face_ball_dx, face_ball_dy)) <= 0.035)
+      {
+        BT_all_stop(1);
+        ai->st.state = 102;
+      }
+    }
+    else 
+    {
+      if (fabs(atan2(ai->st.sdx, ai->st.sdy) - atan2(face_ball_dx, face_ball_dy) - PI) <= 0.035)
+      {
+        BT_all_stop(1);
+        ai->st.state = 102;
+      }
+    }
+
+  }
+  else if (ai->st.state == 102)
+  {
+
+    ai->DPhead = clearDP(ai->DPhead);
+    move_to_ball(ai, blobs, 50);
+    // TODO state transition
+    double old_dist = dist(old_scx, old_scy, ai->st.ball->cx, ai->st.ball->cy);
+    double curr_dist = dist(ai->st.self->cx, ai->st.self->cy, ai->st.ball->cx, ai->st.ball->cy);
+    fprintf(stderr, "[102] move towards ball    Current dist from ball:%f    Old dist:%f\n", curr_dist, old_dist);
+    // if too close to boundary
+    // TODO also check top and left bounds
+    if (ai->st.self->cx < 100.0 || ai->st.self->cy < 100.0 || ai->st.self->cx > (sx - 100.0) || ai->st.self->cy > (sy - 100.0))
+    {
+      fprintf(stderr, "Too close to boundary. Stopping!\n");
+      BT_all_stop(1);
+      ai->st.state = 101;
+    }
+    // Not facing ball / moved away from the ball
+    else if (fabs(curr_dist - dist(old_scx, old_scy, ai->st.ball->cx, ai->st.ball->cy)) > 50.0)
+    {
+      fprintf(stderr, "[102] Not facing ball. Going back to 101\n");
+      BT_all_stop(1);
+      ai->st.state = 101;
+    }
+    // when close to ball
+    // TODO need to factor in distance from middle of rectangle to pincers
+    // so "close" is actually not close to 0
+    else if (curr_dist <= 300.0)
+    {
+      ai->st.state = 103;
+    }
+  }
+  // aim pincers at ball
+  else if (ai->st.state == 103)
+  {
+    fprintf(stderr, "[103] aim pincers at ball\n");
+    // Rotate towards ball
+    // TODO deal with noisy data from image capture!
+    double face_ball_dx;
+    double face_ball_dy;
+    face_ball_dx = ai->st.ball->cx - ai->st.self->cx;
+    face_ball_dy = ai->st.ball->cy - ai->st.self->cy;
+    ai->DPhead = clearDP(ai->DPhead);
+    double curr_dist = dist(ai->st.self->cx, ai->st.self->cy, ai->st.ball->cx, ai->st.ball->cy);
+    rotate(ai, blobs, face_ball_dx, face_ball_dy, -10);
+    fprintf(stderr, "goal atan2 heading: %f, robot: %f\n", atan2(face_ball_dx, face_ball_dy) * 180.0 / PI, atan2(ai->st.sdx, ai->st.sdy) * 180.0 / PI);
+    // Facing the ball, within a 2 degrees
+    if (ai->st.ball->cx > ai->st.self->cx)
+    {
+      if (fabs(atan2(ai->st.sdx, ai->st.sdy) - atan2(face_ball_dx, face_ball_dy)) <= 0.035)
+      {
+        BT_all_stop(1);
+        ai->st.state = 104;
+      }
+    }
+    else if (ai->st.ball->cx <= ai->st.self->cx) 
+    {
+      if (fabs(atan2(ai->st.sdx, ai->st.sdy) - atan2(face_ball_dx, face_ball_dy) - PI) <= 0.035)
+      {
+        BT_all_stop(1);
+        ai->st.state = 104;
+      }
+    }
+    else if (curr_dist > 300)
+    {
+      BT_all_stop(1);
+      ai->st.state = 102;
+    }
+  }
+  // position ball in pincers
+  else if (ai->st.state == 104)
+  {
+    // TODO
+  }
+  // aim ball at goal
+  else if (ai->st.state == 105)
+  {
+    // TODO
+  }
+  // kick the ball
+  else if (ai->st.state == 106)
+  {
+    // TODO
+  }
+  // done
+  else if (ai->st.state == 107)
+  {
+    // TODO
+  }
  }
 
 }
@@ -793,4 +918,30 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
  there.
 **********************************************************************************/
 
+// TODO REMOVE
+void test(struct RoboAI *ai, struct blob *blobs)
+{
+  double angle = atan2(ai->st.sdx, ai->st.sdy);
+  fprintf(stderr, "dx %f\tdy %f\tradians %f\tdegrees %f\n", ai->st.sdx, ai->st.sdy, angle, angle *180.0 / PI);
+  // fprintf(stderr, "Press enter to continue\n");
+  // getchar();
+}
 
+double dist(double x1, double y1, double x2, double y2)
+{
+  return sqrt(pow(x1 - x2, 2) + pow(y1 - y2, 2));
+}
+
+void rotate(struct RoboAI *ai, struct blob *blobs, double dx, double dy, char power)
+{
+  // show the direction of the ball relative to the robot
+  ai->DPhead = addVector(ai->DPhead, ai->st.self->cx, ai->st.self->cy, dx, dy, 40, 255.0, 0.0, 127.0);
+  // pick the smallest angle of rotation
+  // but for now just rotate clockwise
+  BT_turn(LEFT_MOTOR, power, RIGHT_MOTOR, -power);
+}
+
+void move_to_ball(struct RoboAI *ai, struct blob *blobs, char power)
+{
+  BT_drive(LEFT_MOTOR, RIGHT_MOTOR, power);
+}

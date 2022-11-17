@@ -1,0 +1,49 @@
+find how noisy the position data is from the image capture
+- take multiple stationary readings, alternating between 2 different positions
+
+image sx 1280 sy 720
+
+blue bot stationary, but the bounding box and heading vector fluctuated quite
+a bit; so this is with meh calibration
+
+bot: cx 442.341866      cy 600.573493
+bot: cx 438.858742      cy 598.459006
+bot: cx 276.679842      cy 531.677207
+bot: cx 1101.500000     cy 716.500000
+bot: cx 622.729590      cy 592.773975
+bot: cx 0.000000        cy 592.773975
+bot: cx 275.956825      cy 532.669916
+bot: cx 623.831669      cy 592.366892
+bot: cx 441.016323      cy 597.232025
+bot: cx 229.950767      cy 591.758699
+bot: cx 441.760529      cy 600.705977
+bot: cx 229.797084      cy 592.645127
+bot: cx 439.937342      cy 597.858480
+bot: cx 228.628512      cy 594.210709
+bot: cx 439.852241      cy 600.521195
+bot: cx 231.083951      cy 593.161700
+bot: cx 0.000000        cy 593.161700
+bot: cx 229.842917      cy 592.942809
+bot: cx 623.359374      cy 592.445190
+bot: cx 439.400663      cy 595.133800
+bot: cx 623.066876      cy 592.364321
+bot: cx 622.627507      cy 592.607630
+bot: cx 622.464455      cy 593.019636
+bot: cx 622.980604      cy 592.563103
+bot: cx 439.515870      cy 598.219503
+bot: cx 439.314857      cy 596.051282
+bot: cx 622.377649      cy 592.682213
+bot: cx 437.815676      cy 597.462777
+bot: cx 441.462970      cy 599.492439
+bot: cx 439.537561      cy 600.043413
+bot: cx 230.471800      cy 592.276224
+bot: cx 442.099655      cy 597.278621
+bot: cx 441.825847      cy 599.268778
+bot: cx 439.689123      cy 601.785849
+bot: cx 439.939531      cy 594.714286
+bot: cx 440.217069      cy 598.457514
+bot: cx 229.482170      cy 594.406808
+bot: cx 439.601974      cy 599.106725
+bot: cx 622.714389      cy 592.900117
+bot: cx 1165.000000     cy 716.500000
+bot: cx 622.708493      cy 592.883540
