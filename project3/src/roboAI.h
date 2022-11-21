@@ -29,6 +29,9 @@
 // Change this to match the ports your bots motors are connected to
 #define LEFT_MOTOR MOTOR_D
 #define RIGHT_MOTOR MOTOR_A
+#define KICK_MOTOR MOTOR_B
+// Sensors
+#define COLOUR_SENSOR PORT_1
 
 #define AI_SOCCER 0 	// Play soccer!
 #define AI_PENALTY 1    // Go score some goals!
@@ -155,7 +158,11 @@ void test(struct RoboAI *ai, struct blob *blobs);
 double dist(double x1, double y1, double x2, double y2);
 // Rotate robot towards the direction given by the vector [dx, dy]
 void rotate(struct RoboAI *ai, struct blob *blobs, double dx, double dy, char power);
+// GOAL SPECIFIC ROTATION; TODO MAKE MORE GENERAL
+void temp_rotate(struct RoboAI *ai, struct blob *blobs, char power);
 // Assuming the robot is facing the ball, drive straight towards ball
 void move_to_ball(struct RoboAI *ai, struct blob *blobs, char power);
+int ball_in_pincers(struct RoboAI *ai, struct blob *blobs);
+void kick(struct RoboAI *ai, struct blob *blobs);
 
 #endif

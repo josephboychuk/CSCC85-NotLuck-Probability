@@ -795,7 +795,7 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
     // Facing the ball, within a 2 degrees
     if (ai->st.ball->cx > ai->st.self->cx)
     {
-      if (fabs(atan2(ai->st.sdx, ai->st.sdy) - atan2(face_ball_dx, face_ball_dy)) <= 0.035)
+      if (fabs(atan2(ai->st.sdx, ai->st.sdy) - atan2(face_ball_dx, face_ball_dy)) <= 0.050)
       {
         BT_all_stop(1);
         ai->st.state = 102;
@@ -803,7 +803,7 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
     }
     else 
     {
-      if (fabs(atan2(ai->st.sdx, ai->st.sdy) - atan2(face_ball_dx, face_ball_dy) - PI) <= 0.035)
+      if (fabs(atan2(ai->st.sdx, ai->st.sdy) - atan2(face_ball_dx, face_ball_dy) - PI) <= 0.050)
       {
         BT_all_stop(1);
         ai->st.state = 102;
@@ -874,7 +874,7 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
         ai->st.state = 104;
       }
     }
-    else if (curr_dist > 300)
+    else if (curr_dist > 300.0)
     {
       BT_all_stop(1);
       ai->st.state = 102;
@@ -883,22 +883,65 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
   // position ball in pincers
   else if (ai->st.state == 104)
   {
-    // TODO
+    ai->DPhead = clearDP(ai->DPhead);
+    move_to_ball(ai, blobs, 10);
+    // TODO state transition
+    double old_dist = dist(old_scx, old_scy, ai->st.ball->cx, ai->st.ball->cy);
+    double curr_dist = dist(ai->st.self->cx, ai->st.self->cy, ai->st.ball->cx, ai->st.ball->cy);
+    fprintf(stderr, "[104] positioning ball in pincers    Current dist from ball:%f    Old dist:%f\n", curr_dist, old_dist);
+    // Ball is within range
+    if (ball_in_pincers(ai, blobs))
+    {
+      ai->st.state = 105;
+    }
+    // TODO factor in distance from center of rectangle to pincers
+    else if (curr_dist > 300.0)
+    {
+      ai->st.state = 101;
+    }
   }
   // aim ball at goal
   else if (ai->st.state == 105)
   {
-    // TODO
+    fprintf(stderr, "[105] aiming ball at goal\n");
+    double face_goal_dx;
+    double face_goal_dy;
+    face_goal_dx = (sx * (1.0 - ai->st.side)) - ai->st.self->cx;
+    face_goal_dy = (sy / 2.0) - ai->st.self->cy;
+    ai->DPhead = clearDP(ai->DPhead);
+    temp_rotate(ai, blobs, 10);
+    fprintf(stderr, "goal atan2 heading: %f, robot: %f\n", atan2(face_goal_dx, face_goal_dy) * 180.0 / PI, atan2(ai->st.sdx, ai->st.sdy) * 180.0 / PI);
+    // if ball fell out of pincers, get it back
+    if (ball_in_pincers(ai, blobs) == 0)
+    {
+      ai->st.state = 103;
+    }
+    // if ball is too far
+    else if (dist(ai->st.ball->cx, ai->st.ball->cy, ai->st.self->cx, ai->st.self->cy) > 300.0)
+    {
+      ai->st.state = 101;
+    }
+    // if we're facing the goal (and ball in pincers), kick
+    else if (atan2(face_goal_dx, face_goal_dy) == atan2(ai->st.sdx, ai->st.sdy))
+    {
+      ai->st.state = 106;
+    }
   }
   // kick the ball
   else if (ai->st.state == 106)
   {
-    // TODO
+    kick(ai, blobs);
+    // if the ball moved, we kicked it (probably)
+    if (ball_in_pincers == 0)
+    {
+      ai->st.state = 107;
+    }
   }
   // done
   else if (ai->st.state == 107)
   {
-    // TODO
+    BT_all_stop(0);
+    fprintf(stderr, "[108] Done\n");
   }
  }
 
@@ -937,11 +980,62 @@ void rotate(struct RoboAI *ai, struct blob *blobs, double dx, double dy, char po
   // show the direction of the ball relative to the robot
   ai->DPhead = addVector(ai->DPhead, ai->st.self->cx, ai->st.self->cy, dx, dy, 40, 255.0, 0.0, 127.0);
   // pick the smallest angle of rotation
-  // but for now just rotate clockwise
+  // but for now just rotate CCW
   BT_turn(LEFT_MOTOR, power, RIGHT_MOTOR, -power);
+}
+
+void temp_rotate(struct RoboAI *ai, struct blob *blobs, char power)
+{
+  double goal_x = sx * (1.0 - ai->st.side);
+  double goal_y = sy / 2.0;
+  if (ai->st.self->cx > goal_x)
+  {
+    if (ai->st.self->cy < goal_y)
+    {
+      BT_turn(LEFT_MOTOR, power, RIGHT_MOTOR, -power);
+    } else
+    {
+      BT_turn(LEFT_MOTOR, -power, RIGHT_MOTOR, power);
+    }
+  }
+  else
+  {
+    if (ai->st.self->cy < goal_y)
+    {
+      BT_turn(LEFT_MOTOR, -power, RIGHT_MOTOR, power);
+    } else
+    {
+      BT_turn(LEFT_MOTOR, power, RIGHT_MOTOR, -power);
+    }
+  }
 }
 
 void move_to_ball(struct RoboAI *ai, struct blob *blobs, char power)
 {
   BT_drive(LEFT_MOTOR, RIGHT_MOTOR, power);
+}
+
+int ball_in_pincers(struct RoboAI *ai, struct blob *blobs)
+{
+  // read multiple times
+  const int N = 7;
+  int count = 0;
+  // majority is black blue or white then it's inside
+  for (int i=0; i<N; i++)
+  {
+    int colour = BT_read_colour_sensor(COLOUR_SENSOR);
+    if (colour == 1 || colour == 2 || colour == 6)
+    {
+      count++;
+    }
+  }
+  return count > 3;
+}
+
+void kick(struct RoboAI *ai, struct blob *blobs)
+{
+  BT_drive(RIGHT_MOTOR, LEFT_MOTOR, 40);
+  BT_timed_motor_port_start_v2(KICK_MOTOR, -100, 20);
+  BT_timed_motor_port_start_v2(KICK_MOTOR, 20, 200);
+  BT_all_stop(0);
 }
