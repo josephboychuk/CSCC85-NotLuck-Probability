@@ -75,7 +75,7 @@ struct AI_data{
 
 	// Self track data. Done separately each frame
     struct blob *self;		       // Current self blob *NULL* if not visible/found
-	double old_scx, old_scy;	   // Previous self (cx,cy)
+	double old_scx, old_scy;	   // Previous self (cx,cy)x
 	double svx,svy;			       // Current self [vx vy]
 	double smx,smy;			       // Self motion vector
 	double sdx,sdy;                // Self heading direction (from blob shape)
@@ -161,7 +161,7 @@ void rotate(struct RoboAI *ai, struct blob *blobs, double dx, double dy, char po
 // GOAL SPECIFIC ROTATION; TODO MAKE MORE GENERAL
 void temp_rotate(struct RoboAI *ai, struct blob *blobs, char power);
 // Assuming the robot is facing the ball, drive straight towards ball
-void move_to_ball(struct RoboAI *ai, struct blob *blobs, char power);
+void move_to_ball(struct RoboAI *ai, struct blob *blobs);
 int ball_in_pincers(struct RoboAI *ai, struct blob *blobs);
 void kick(struct RoboAI *ai, struct blob *blobs);
 

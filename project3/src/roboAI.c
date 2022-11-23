@@ -693,6 +693,8 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
   char line[1024];
   static int count=0;
   static double old_dx=0, old_dy=0;
+  // True (1) if robot is facing left
+  static int left = 0;
       
   /************************************************************
    * Standard initialization routine for starter code,
@@ -778,7 +780,34 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
   double old_scx = ai->st.old_scx;
   double old_scy = ai->st.old_scy;
   track_agents(ai,blobs);		// Currently, does nothing but endlessly track
-  // test(ai, blobs);
+  // TODO REMOVE. THIS JUST FORCES US INTO 1 CONDITIONAL FOR TESTING
+  ai->st.state = 301;
+  if (ai->st.state == 301)
+  {
+    fprintf(stderr, "[TEST] ");
+    // fprintf(stderr, "Correcting heading direction while moving\n");
+    // moving backwards
+    left = ai->st.smx <= 0 ? 1 : 0;
+    if (!left)
+    {
+      ai->st.sdx *= -1.0;
+      ai->st.sdy *= -1.0;
+      ai->st.self->dx *= -1.0;
+      ai->st.self->dy *= -1.0;
+    }
+    fprintf(stderr, "Facing %s. sdx %f, sdy %f, angle %f\n", !left ? "left" : "right", ai->st.sdx, ai->st.sdy, atan2(ai->st.sdx, ai->st.sdy) * 180.0 / PI);
+    ai->DPhead = clearDP(ai->DPhead);
+    ai->DPhead = addVector(ai->DPhead, ai->st.self->cx, ai->st.self->cy, ai->st.sdx, ai->st.sdy, 10, 0, 255.0, 0);
+    if (ai->st.self->cx > 100.0 && ai->st.self->cx < (sx - 100.0) &&
+        ai->st.self->cy > 100.0 && ai->st.self->cy < (sy - 100.0))
+    {
+      BT_drive(LEFT_MOTOR, RIGHT_MOTOR, -20);
+    }
+    else
+    {
+      BT_all_stop(0);
+    }
+  }
 
   if (ai->st.state == 101)
   {
@@ -815,7 +844,7 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
   {
 
     ai->DPhead = clearDP(ai->DPhead);
-    move_to_ball(ai, blobs, 50);
+    move_to_ball(ai, blobs);
     // TODO state transition
     double old_dist = dist(old_scx, old_scy, ai->st.ball->cx, ai->st.ball->cy);
     double curr_dist = dist(ai->st.self->cx, ai->st.self->cy, ai->st.ball->cx, ai->st.ball->cy);
@@ -884,7 +913,7 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
   else if (ai->st.state == 104)
   {
     ai->DPhead = clearDP(ai->DPhead);
-    move_to_ball(ai, blobs, 10);
+    move_to_ball(ai, blobs);
     // TODO state transition
     double old_dist = dist(old_scx, old_scy, ai->st.ball->cx, ai->st.ball->cy);
     double curr_dist = dist(ai->st.self->cx, ai->st.self->cy, ai->st.ball->cx, ai->st.ball->cy);
@@ -1010,9 +1039,21 @@ void temp_rotate(struct RoboAI *ai, struct blob *blobs, char power)
   }
 }
 
-void move_to_ball(struct RoboAI *ai, struct blob *blobs, char power)
+void move_to_ball(struct RoboAI *ai, struct blob *blobs)
 {
-  BT_drive(LEFT_MOTOR, RIGHT_MOTOR, power);
+  // determine distance from balll
+  // further distance is more power
+  double curr_dist = dist(ai->st.self->cx, ai->st.self->cy, ai->st.ball->cx, ai->st.ball->cy);
+  double power = curr_dist/(sqrt(sx^2 + sy^2));
+  BT_turn(LEFT_MOTOR, power, RIGHT_MOTOR, power);
+ 
+  
+}
+
+void move_away_from_obstacles(struct RoboAI *ai, struct blob *blobs)
+{
+  // Move away from obstacles by determining the direction that
+  //  obstacles are in and trying to move opposite that
 }
 
 int ball_in_pincers(struct RoboAI *ai, struct blob *blobs)
