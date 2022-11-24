@@ -167,5 +167,5 @@ int ball_in_pincers(struct RoboAI *ai, struct blob *blobs);
 void kick(struct RoboAI *ai, struct blob *blobs);
 // TODO: cleanup logic for correcting angle here. 
 void test_d_backwards(struct RoboAI *ai, struct blob *blobs, int *left);
-void test_d_rotate(struct RoboAI *ai, struct blob *blobs, int *left, double old_sdx, double old_sdy);
+void test_d_rotate(struct RoboAI *ai, struct blob *blobs, int *left);
 #endif

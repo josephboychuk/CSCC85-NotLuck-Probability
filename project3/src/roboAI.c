@@ -792,7 +792,7 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
   if (ai->st.state == 301)
   {
     fprintf(stderr, "[TEST] ");
-    test_d_backwards(ai, blobs, &left);
+    test_d_rotate(ai, blobs, &left);
   }
 
   if (ai->st.state == 101)
@@ -1111,7 +1111,7 @@ void test_d_backwards(struct RoboAI *ai, struct blob *blobs, int *left)
 }
 
 // WIP
-void test_d_rotate(struct RoboAI *ai, struct blob *blobs, int *left, double old_sdx, double old_sdy)
+void test_d_rotate(struct RoboAI *ai, struct blob *blobs, int *left)
 {
   // assume old direction vector is the raw one that hasnt been
   // corrected?
@@ -1129,9 +1129,11 @@ void test_d_rotate(struct RoboAI *ai, struct blob *blobs, int *left, double old_
   // AI data has not been corrected yet
   // we can uncorrect the old angle so we just look if the curr angle
   // suddenly jumped close to 180 degrees compared to previous
-  // if the old direction is not correct, ie we ask for the raw value set in
-  // in the blob, just proceed with the check
-
+  double tol = 140.0;
+  if (fabs(atan2(-ai->st.old_sdx, -ai->st.old_sdy) - atan2(ai->st.sdx, ai->st.sdy)) >= tol)
+  {
+    *left = *left ? 0 : 1;
+  }
   // correct heading
   if (left)
   {
@@ -1143,5 +1145,6 @@ void test_d_rotate(struct RoboAI *ai, struct blob *blobs, int *left, double old_
   fprintf(stderr, "Facing %s. sdx %f, sdy %f, angle %f\n", left ? "left" : "right", ai->st.sdx, ai->st.sdy, atan2(ai->st.sdx, ai->st.sdy) * 180.0 / PI);
   ai->DPhead = clearDP(ai->DPhead);
   ai->DPhead = addVector(ai->DPhead, ai->st.self->cx, ai->st.self->cy, ai->st.sdx, ai->st.sdy, 100, 0, 255.0, 0);
+  // ROTATE CW
   BT_turn(LEFT_MOTOR, 20, RIGHT_MOTOR, -20);
 }
