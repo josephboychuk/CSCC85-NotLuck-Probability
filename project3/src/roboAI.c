@@ -775,38 +775,24 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
    state transitions and with calling the appropriate function based on what
    the bot is supposed to be doing.
   *****************************************************************************/
-//  fprintf(stderr,"Just trackin'!\n");	// bot, opponent, and ball.
-  // TODO figure out what the *state param is used for
+  // TODO cleanup local variables
   double old_scx = ai->st.old_scx;
   double old_scy = ai->st.old_scy;
-  track_agents(ai,blobs);		// Currently, does nothing but endlessly track
+  // TODO: check if not setting an initial value for the new struct variable
+  // is safe. it seems like it is cause we're not accessing its value before
+  // we set it
+  // Save the old direction vector that has the corrected sign
+  // So ai->st.sdx, sdy must have the correct sign by the end of a frame
+  // that is, each state function should ensure this is correct
+  ai->st.old_sdx = ai->st.sdx;
+  ai->st.old_sdy = ai->st.sdy;
+  track_agents(ai,blobs);
   // TODO REMOVE. THIS JUST FORCES US INTO 1 CONDITIONAL FOR TESTING
   ai->st.state = 301;
   if (ai->st.state == 301)
   {
     fprintf(stderr, "[TEST] ");
-    // fprintf(stderr, "Correcting heading direction while moving\n");
-    // moving backwards
-    left = ai->st.smx <= 0 ? 1 : 0;
-    if (!left)
-    {
-      ai->st.sdx *= -1.0;
-      ai->st.sdy *= -1.0;
-      ai->st.self->dx *= -1.0;
-      ai->st.self->dy *= -1.0;
-    }
-    fprintf(stderr, "Facing %s. sdx %f, sdy %f, angle %f\n", !left ? "left" : "right", ai->st.sdx, ai->st.sdy, atan2(ai->st.sdx, ai->st.sdy) * 180.0 / PI);
-    ai->DPhead = clearDP(ai->DPhead);
-    ai->DPhead = addVector(ai->DPhead, ai->st.self->cx, ai->st.self->cy, ai->st.sdx, ai->st.sdy, 10, 0, 255.0, 0);
-    if (ai->st.self->cx > 100.0 && ai->st.self->cx < (sx - 100.0) &&
-        ai->st.self->cy > 100.0 && ai->st.self->cy < (sy - 100.0))
-    {
-      BT_drive(LEFT_MOTOR, RIGHT_MOTOR, -20);
-    }
-    else
-    {
-      BT_all_stop(0);
-    }
+    test_d_backwards(ai, blobs, &left);
   }
 
   if (ai->st.state == 101)
@@ -1079,4 +1065,83 @@ void kick(struct RoboAI *ai, struct blob *blobs)
   BT_timed_motor_port_start_v2(KICK_MOTOR, -100, 20);
   BT_timed_motor_port_start_v2(KICK_MOTOR, 20, 200);
   BT_all_stop(0);
+}
+
+// TODO CLEANUP direction vector correction logic
+void test_d_backwards(struct RoboAI *ai, struct blob *blobs, int *left)
+{
+  // fprintf(stderr, "Correcting heading direction while moving\n");
+  // moving backwards
+  // WAIT! if we store the corrected direction, next frame we're going to
+  // see we're still pointing left (possibly) and we'll flip the CORRECTED direction!
+  // ...or will we? does the image capturing software or track agents keep
+  // replacing it with the raw value? lines 402-403 track_agents simply copies
+  // whatever is in the blob in curr frame, so check how thats computed in the blob
+  // if blob gives incorrect value at start of each frame...
+
+  // so don't overwrite the data in the structs so we can keep the raw value?
+  // or change the check to include the direction so it doesnt assume its wrong?
+  // could check it's facing the wrong direction by checking if product of
+  // x's is < 0 (only happens if signs are different) AND y product is < 0
+    // this works with both incorrect and corrected vectors, so we could overwrite it
+  // with a motion vector, we don't need to check left or right, but
+  // we'll need it for rotation
+  *left = ai->st.smx <= 0 ? 1 : 0;
+  if (!left)
+  {
+    // MODIFYS THE RAW ANGLE!! consider just returning the corrected angle
+    // or flip it in the calling code instead without modifying raw value
+    ai->st.sdx *= -1.0;
+    ai->st.sdy *= -1.0;
+    ai->st.self->dx *= -1.0;
+    ai->st.self->dy *= -1.0;
+  }
+  fprintf(stderr, "Facing %s. sdx %f, sdy %f, angle %f\n", !left ? "left" : "right", ai->st.sdx, ai->st.sdy, atan2(ai->st.sdx, ai->st.sdy) * 180.0 / PI);
+  ai->DPhead = clearDP(ai->DPhead);
+  ai->DPhead = addVector(ai->DPhead, ai->st.self->cx, ai->st.self->cy, ai->st.sdx, ai->st.sdy, 100, 0, 255.0, 0);
+  if (ai->st.self->cx > 100.0 && ai->st.self->cx < (sx - 100.0) &&
+      ai->st.self->cy > 100.0 && ai->st.self->cy < (sy - 100.0))
+  {
+    BT_drive(LEFT_MOTOR, RIGHT_MOTOR, -20);
+  }
+  else
+  {
+    BT_all_stop(0);
+  }
+}
+
+// WIP
+void test_d_rotate(struct RoboAI *ai, struct blob *blobs, int *left, double old_sdx, double old_sdy)
+{
+  // assume old direction vector is the raw one that hasnt been
+  // corrected?
+
+  // // assuming the dx, dy and left has been kept correct
+  // // if it rotates from +0 to -0 or +180 to -180 or other way around for either
+  // // then the bot changes x direction (left -> right, vice versa)
+  // // only the x changes sign at 0 or 180
+  // if (ai->st.sdx * old_sdx < 0)
+  // {
+  //   left = left ? 0 : 1;
+  // }
+
+  // assume the old direction vector is correct, but the current one in the
+  // AI data has not been corrected yet
+  // we can uncorrect the old angle so we just look if the curr angle
+  // suddenly jumped close to 180 degrees compared to previous
+  // if the old direction is not correct, ie we ask for the raw value set in
+  // in the blob, just proceed with the check
+
+  // correct heading
+  if (left)
+  {
+    ai->st.sdx *= -1.0;
+    ai->st.sdy *= -1.0;
+    ai->st.self->dx *= -1.0;
+    ai->st.self->dy *= -1.0;
+  }
+  fprintf(stderr, "Facing %s. sdx %f, sdy %f, angle %f\n", left ? "left" : "right", ai->st.sdx, ai->st.sdy, atan2(ai->st.sdx, ai->st.sdy) * 180.0 / PI);
+  ai->DPhead = clearDP(ai->DPhead);
+  ai->DPhead = addVector(ai->DPhead, ai->st.self->cx, ai->st.self->cy, ai->st.sdx, ai->st.sdy, 100, 0, 255.0, 0);
+  BT_turn(LEFT_MOTOR, 20, RIGHT_MOTOR, -20);
 }

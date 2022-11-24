@@ -76,6 +76,7 @@ struct AI_data{
 	// Self track data. Done separately each frame
     struct blob *self;		       // Current self blob *NULL* if not visible/found
 	double old_scx, old_scy;	   // Previous self (cx,cy)x
+	double old_sdx, old_sdy;	   // Previous self [dx, dy], with the corrected sign
 	double svx,svy;			       // Current self [vx vy]
 	double smx,smy;			       // Self motion vector
 	double sdx,sdy;                // Self heading direction (from blob shape)
@@ -164,5 +165,7 @@ void temp_rotate(struct RoboAI *ai, struct blob *blobs, char power);
 void move_to_ball(struct RoboAI *ai, struct blob *blobs);
 int ball_in_pincers(struct RoboAI *ai, struct blob *blobs);
 void kick(struct RoboAI *ai, struct blob *blobs);
-
+// TODO: cleanup logic for correcting angle here. 
+void test_d_backwards(struct RoboAI *ai, struct blob *blobs, int *left);
+void test_d_rotate(struct RoboAI *ai, struct blob *blobs, int *left, double old_sdx, double old_sdy);
 #endif
