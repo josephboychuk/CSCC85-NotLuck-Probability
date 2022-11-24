@@ -29,6 +29,11 @@
 ***************************************************************************/
 
 #include "roboAI.h"			// <--- Look at this header file!
+// PID controller constants
+#define K1 50
+#define K2 1
+#define K3 1
+#define C 1
 extern int sx;              // Get access to the image size from the imageCapture module
 extern int sy;
 int laggy=0;
@@ -732,6 +737,10 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
            ai->st.self->dy*=-1.0;
            ai->st.sdx*=-1;
            ai->st.sdy*=-1;
+           // We know the direction is only correct when the robot is actually
+           // facing the right side of the field. So if it doesn't agree with
+           // the motion vector, the robot must be facing left
+          //  left = 1;
        }
        old_dx=ai->st.sdx;
        old_dy=ai->st.sdy;
@@ -778,17 +787,26 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
   // TODO cleanup local variables
   double old_scx = ai->st.old_scx;
   double old_scy = ai->st.old_scy;
+  // TODO remove when refactoring the state functions out
+  double correct_dx, correct_dy, face_ball_dx, face_ball_dy, bx, by;
   // TODO: check if not setting an initial value for the new struct variable
   // is safe. it seems like it is cause we're not accessing its value before
   // we set it
-  // Save the old direction vector that has the corrected sign
-  // So ai->st.sdx, sdy must have the correct sign by the end of a frame
-  // that is, each state function should ensure this is correct
+  // Save the old direction vector that doesnt have the corrected sign
+  // TODO: hacked the initialization logic
+  if (ai->st.sdx < 0)
+  {
+    ai->st.sdx *= -1.0;
+    ai->st.sdy *= -1.0;
+    left = 1;
+  }
+
   ai->st.old_sdx = ai->st.sdx;
   ai->st.old_sdy = ai->st.sdy;
   track_agents(ai,blobs);
+  // fprintf(stderr, "");
   // TODO REMOVE. THIS JUST FORCES US INTO 1 CONDITIONAL FOR TESTING
-  ai->st.state = 301;
+  //ai->st.state = 102;
   if (ai->st.state == 301)
   {
     fprintf(stderr, "[TEST] ");
@@ -799,41 +817,44 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
   {
     fprintf(stderr, "[101] rotate towards ball\n");
     // Rotate towards ball
-    // TODO deal with noisy data from image capture!
-    double face_ball_dx;
-    double face_ball_dy;
-    face_ball_dx = ai->st.ball->cx - ai->st.self->cx;
-    face_ball_dy = ai->st.ball->cy - ai->st.self->cy;
+    // TODO recdeclare when moving this funcrtion out of AI_main
+    // double correct_dx, correct_dy, face_ball_dx, face_ball_dy;
+    left = is_left(ai, left, ROTATE);
+    // correct heading
+    correct_dx = ai->st.sdx;
+    correct_dy = ai->st.sdy;
+    if (left)
+    {
+      correct_dx *= -1.0;
+      correct_dy *= -1.0;
+    }
+    get_ball_xy(ai, blobs, &bx, &by);
+    face_ball_dx = bx - ai->st.self->cx;
+    face_ball_dy = by - ai->st.self->cy;
+    double ang = signed_rotation(correct_dx, correct_dy, face_ball_dx, face_ball_dy);
     ai->DPhead = clearDP(ai->DPhead);
-    rotate(ai, blobs, face_ball_dx, face_ball_dy, 20);
-    fprintf(stderr, "goal atan2 heading: %f, robot: %f\n", atan2(face_ball_dx, face_ball_dy) * 180.0 / PI, atan2(ai->st.sdx, ai->st.sdy) * 180.0 / PI);
-    // Facing the ball, within a 2 degrees
-    if (ai->st.ball->cx > ai->st.self->cx)
+    ai->DPhead = addVector(ai->DPhead, ai->st.self->cx, ai->st.self->cy, correct_dx, correct_dy, 100, 0, 255.0, 0);
+    rotate(ai, blobs, ang, 50.0);
+    fprintf(stderr, "raw [%f, %f], correct [%f, %f]\n", ai->st.sdx, ai->st.sdy, correct_dx, correct_dy);
+    fprintf(stderr, "goal atan2 heading: %f, robot: %f\n", atan2(face_ball_dx, face_ball_dy) * 180.0 / PI, atan2(correct_dx, correct_dy) * 180.0 / PI);
+    // Facing the ball, within 8 degrees
+
+    if (fabs(ang) <= 0.21)
     {
-      if (fabs(atan2(ai->st.sdx, ai->st.sdy) - atan2(face_ball_dx, face_ball_dy)) <= 0.050)
-      {
-        BT_all_stop(1);
-        ai->st.state = 102;
-      }
+      BT_all_stop(1);
+      ai->st.state = 102;
     }
-    else 
-    {
-      if (fabs(atan2(ai->st.sdx, ai->st.sdy) - atan2(face_ball_dx, face_ball_dy) - PI) <= 0.050)
-      {
-        BT_all_stop(1);
-        ai->st.state = 102;
-      }
-    }
+    
 
   }
   else if (ai->st.state == 102)
   {
-
     ai->DPhead = clearDP(ai->DPhead);
-    move_to_ball(ai, blobs);
+    get_ball_xy(ai, blobs, &bx, &by);
+    move_to_target(ai, blobs, bx, by, 100);
     // TODO state transition
-    double old_dist = dist(old_scx, old_scy, ai->st.ball->cx, ai->st.ball->cy);
-    double curr_dist = dist(ai->st.self->cx, ai->st.self->cy, ai->st.ball->cx, ai->st.ball->cy);
+    double old_dist = dist(old_scx, old_scy, bx, by);
+    double curr_dist = dist(ai->st.self->cx, ai->st.self->cy, bx, by);
     fprintf(stderr, "[102] move towards ball    Current dist from ball:%f    Old dist:%f\n", curr_dist, old_dist);
     // if too close to boundary
     // TODO also check top and left bounds
@@ -844,7 +865,7 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
       ai->st.state = 101;
     }
     // Not facing ball / moved away from the ball
-    else if (fabs(curr_dist - dist(old_scx, old_scy, ai->st.ball->cx, ai->st.ball->cy)) > 50.0)
+    else if (fabs(curr_dist - dist(old_scx, old_scy, bx, by)) > 50.0)
     {
       fprintf(stderr, "[102] Not facing ball. Going back to 101\n");
       BT_all_stop(1);
@@ -853,7 +874,7 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
     // when close to ball
     // TODO need to factor in distance from middle of rectangle to pincers
     // so "close" is actually not close to 0
-    else if (curr_dist <= 300.0)
+    else if (curr_dist <= 250.0)
     {
       ai->st.state = 103;
     }
@@ -863,31 +884,31 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
   {
     fprintf(stderr, "[103] aim pincers at ball\n");
     // Rotate towards ball
-    // TODO deal with noisy data from image capture!
-    double face_ball_dx;
-    double face_ball_dy;
-    face_ball_dx = ai->st.ball->cx - ai->st.self->cx;
-    face_ball_dy = ai->st.ball->cy - ai->st.self->cy;
-    ai->DPhead = clearDP(ai->DPhead);
-    double curr_dist = dist(ai->st.self->cx, ai->st.self->cy, ai->st.ball->cx, ai->st.ball->cy);
-    rotate(ai, blobs, face_ball_dx, face_ball_dy, -10);
-    fprintf(stderr, "goal atan2 heading: %f, robot: %f\n", atan2(face_ball_dx, face_ball_dy) * 180.0 / PI, atan2(ai->st.sdx, ai->st.sdy) * 180.0 / PI);
-    // Facing the ball, within a 2 degrees
-    if (ai->st.ball->cx > ai->st.self->cx)
+    // TODO redeclare when separating this out from AI_main. right now
+    // we are redeclaring variables!
+    // double correct_dx, correct_dy, face_ball_dx, face_ball_dy;
+    left = is_left(ai, left, ROTATE);
+    // correct heading
+    correct_dx = ai->st.sdx;
+    correct_dy = ai->st.sdy;
+    if (left)
     {
-      if (fabs(atan2(ai->st.sdx, ai->st.sdy) - atan2(face_ball_dx, face_ball_dy)) <= 0.035)
-      {
-        BT_all_stop(1);
-        ai->st.state = 104;
-      }
+      correct_dx *= -1;
+      correct_dy *= -1;
     }
-    else if (ai->st.ball->cx <= ai->st.self->cx) 
+    get_ball_xy(ai, blobs, &bx, &by);
+    face_ball_dx = bx - ai->st.self->cx;
+    face_ball_dy = by - ai->st.self->cy;
+    ai->DPhead = clearDP(ai->DPhead);
+    double curr_dist = dist(ai->st.self->cx, ai->st.self->cy, bx, by);
+    double ang = signed_rotation(correct_dx, correct_dy, face_ball_dx, face_ball_dy);
+    rotate(ai, blobs, ang, 10);
+    fprintf(stderr, "goal atan2 heading: %f, robot: %f\n", atan2(face_ball_dx, face_ball_dy) * 180.0 / PI, atan2(correct_dx, correct_dy) * 180.0 / PI);
+    // Facing the ball, within a 8 degrees
+    if (fabs(ang) <= 0.14)
     {
-      if (fabs(atan2(ai->st.sdx, ai->st.sdy) - atan2(face_ball_dx, face_ball_dy) - PI) <= 0.035)
-      {
-        BT_all_stop(1);
-        ai->st.state = 104;
-      }
+      BT_all_stop(1);
+      ai->st.state = 104;
     }
     else if (curr_dist > 300.0)
     {
@@ -899,10 +920,11 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
   else if (ai->st.state == 104)
   {
     ai->DPhead = clearDP(ai->DPhead);
-    move_to_ball(ai, blobs);
+    get_ball_xy(ai, blobs, &bx, &by);
+    move_to_target(ai, blobs, bx, by, 30);
     // TODO state transition
-    double old_dist = dist(old_scx, old_scy, ai->st.ball->cx, ai->st.ball->cy);
-    double curr_dist = dist(ai->st.self->cx, ai->st.self->cy, ai->st.ball->cx, ai->st.ball->cy);
+    double old_dist = dist(old_scx, old_scy, bx, by);
+    double curr_dist = dist(ai->st.self->cx, ai->st.self->cy, bx, by);
     fprintf(stderr, "[104] positioning ball in pincers    Current dist from ball:%f    Old dist:%f\n", curr_dist, old_dist);
     // Ball is within range
     if (ball_in_pincers(ai, blobs))
@@ -921,10 +943,21 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
     fprintf(stderr, "[105] aiming ball at goal\n");
     double face_goal_dx;
     double face_goal_dy;
+    get_ball_xy(ai, blobs, &bx, &by);
     face_goal_dx = (sx * (1.0 - ai->st.side)) - ai->st.self->cx;
     face_goal_dy = (sy / 2.0) - ai->st.self->cy;
     ai->DPhead = clearDP(ai->DPhead);
-    temp_rotate(ai, blobs, 10);
+    left = is_left(ai, left, ROTATE);
+    // correct heading
+    correct_dx = ai->st.sdx;
+    correct_dy = ai->st.sdy;
+    if (left)
+    {
+      correct_dx *= -1.0;
+      correct_dy *= -1.0;
+    }
+    double ang = signed_rotation(correct_dx, correct_dy, face_goal_dx, face_goal_dy);
+    rotate(ai, blobs, ang, 25.0);
     fprintf(stderr, "goal atan2 heading: %f, robot: %f\n", atan2(face_goal_dx, face_goal_dy) * 180.0 / PI, atan2(ai->st.sdx, ai->st.sdy) * 180.0 / PI);
     // if ball fell out of pincers, get it back
     if (ball_in_pincers(ai, blobs) == 0)
@@ -932,12 +965,12 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
       ai->st.state = 103;
     }
     // if ball is too far
-    else if (dist(ai->st.ball->cx, ai->st.ball->cy, ai->st.self->cx, ai->st.self->cy) > 300.0)
+    else if (dist(bx, by, ai->st.self->cx, ai->st.self->cy) > 300.0)
     {
       ai->st.state = 101;
     }
     // if we're facing the goal (and ball in pincers), kick
-    else if (atan2(face_goal_dx, face_goal_dy) == atan2(ai->st.sdx, ai->st.sdy))
+    else if (fabs(ang) <= 0.07)
     {
       ai->st.state = 106;
     }
@@ -947,7 +980,7 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
   {
     kick(ai, blobs);
     // if the ball moved, we kicked it (probably)
-    if (ball_in_pincers == 0)
+    if (ball_in_pincers(ai, blobs) == 0)
     {
       ai->st.state = 107;
     }
@@ -957,6 +990,141 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
   {
     BT_all_stop(0);
     fprintf(stderr, "[108] Done\n");
+  }
+
+  if (ai->st.state == 201)
+  {
+    fprintf(stderr, "[201] rotate towards ball\n");
+    // Rotate towards ball
+    // TODO recdeclare when moving this funcrtion out of AI_main
+    // double correct_dx, correct_dy, face_ball_dx, face_ball_dy;
+    left = is_left(ai, left, ROTATE);
+    // correct heading
+    correct_dx = ai->st.sdx;
+    correct_dy = ai->st.sdy;
+    if (left)
+    {
+      correct_dx *= -1.0;
+      correct_dy *= -1.0;
+    }
+    get_ball_xy(ai, blobs, &bx, &by);
+    face_ball_dx = bx - ai->st.self->cx;
+    face_ball_dy = by - ai->st.self->cy;
+    double ang = signed_rotation(correct_dx, correct_dy, face_ball_dx, face_ball_dy);
+    ai->DPhead = clearDP(ai->DPhead);
+    ai->DPhead = addVector(ai->DPhead, ai->st.self->cx, ai->st.self->cy, correct_dx, correct_dy, 100, 0, 255.0, 0);
+    rotate(ai, blobs, ang, 50.0);
+    fprintf(stderr, "raw [%f, %f], correct [%f, %f]\n", ai->st.sdx, ai->st.sdy, correct_dx, correct_dy);
+    fprintf(stderr, "goal atan2 heading: %f, robot: %f\n", atan2(face_ball_dx, face_ball_dy) * 180.0 / PI, atan2(correct_dx, correct_dy) * 180.0 / PI);
+    // Facing the ball, within 8 degrees
+
+    if (fabs(ang) <= 0.21)
+    {
+      BT_all_stop(1);
+      ai->st.state = 202;
+    }
+    
+
+  }
+  else if (ai->st.state == 202)
+  {
+    ai->DPhead = clearDP(ai->DPhead);
+    get_ball_xy(ai, blobs, &bx, &by);
+    move_to_target(ai, blobs, bx, by, 100);
+    // TODO state transition
+    double old_dist = dist(old_scx, old_scy, bx, by);
+    double curr_dist = dist(ai->st.self->cx, ai->st.self->cy, bx, by);
+    fprintf(stderr, "[202] move towards ball    Current dist from ball:%f    Old dist:%f\n", curr_dist, old_dist);
+    // if too close to boundary
+    // TODO also check top and left bounds
+    if (ai->st.self->cx < 100.0 || ai->st.self->cy < 100.0 || ai->st.self->cx > (sx - 100.0) || ai->st.self->cy > (sy - 100.0))
+    {
+      fprintf(stderr, "Too close to boundary. Stopping!\n");
+      BT_all_stop(1);
+      ai->st.state = 201;
+    }
+    // Not facing ball / moved away from the ball
+    else if (fabs(curr_dist - dist(old_scx, old_scy, bx, by)) > 50.0)
+    {
+      fprintf(stderr, "[202] Not facing ball. Going back to 201\n");
+      BT_all_stop(1);
+      ai->st.state = 201;
+    }
+    // when close to ball
+    // TODO need to factor in distance from middle of rectangle to pincers
+    // so "close" is actually not close to 0
+    else if (curr_dist <= 250.0)
+    {
+      ai->st.state = 203;
+    }
+  }
+  // aim pincers at ball
+  else if (ai->st.state == 203)
+  {
+    fprintf(stderr, "[203] aim pincers at ball\n");
+    // Rotate towards ball
+    // TODO redeclare when separating this out from AI_main. right now
+    // we are redeclaring variables!
+    // double correct_dx, correct_dy, face_ball_dx, face_ball_dy;
+    left = is_left(ai, left, ROTATE);
+    // correct heading
+    correct_dx = ai->st.sdx;
+    correct_dy = ai->st.sdy;
+    if (left)
+    {
+      correct_dx *= -1;
+      correct_dy *= -1;
+    }
+    get_ball_xy(ai, blobs, &bx, &by);
+    face_ball_dx = bx - ai->st.self->cx;
+    face_ball_dy = by - ai->st.self->cy;
+    ai->DPhead = clearDP(ai->DPhead);
+    double curr_dist = dist(ai->st.self->cx, ai->st.self->cy, bx, by);
+    double ang = signed_rotation(correct_dx, correct_dy, face_ball_dx, face_ball_dy);
+    rotate(ai, blobs, ang, 10);
+    fprintf(stderr, "goal atan2 heading: %f, robot: %f\n", atan2(face_ball_dx, face_ball_dy) * 180.0 / PI, atan2(correct_dx, correct_dy) * 180.0 / PI);
+    // Facing the ball, within a 8 degrees
+    if (fabs(ang) <= 0.14)
+    {
+      BT_all_stop(1);
+      ai->st.state = 204;
+    }
+    else if (curr_dist > 300.0)
+    {
+      BT_all_stop(1);
+      ai->st.state = 202;
+    }
+  }
+  // position ball in pincers
+  else if (ai->st.state == 204)
+  {
+    ai->DPhead = clearDP(ai->DPhead);
+    get_ball_xy(ai, blobs, &bx, &by);
+    move_to_target(ai, blobs, bx, by, 30);
+    // TODO state transition
+    double old_dist = dist(old_scx, old_scy, bx, by);
+    double curr_dist = dist(ai->st.self->cx, ai->st.self->cy, bx, by);
+    fprintf(stderr, "[204] positioning ball in pincers    Current dist from ball:%f    Old dist:%f\n", curr_dist, old_dist);
+    // Ball is within range
+    if (ball_in_pincers(ai, blobs))
+    {
+      ai->st.state = 205;
+    }
+    // TODO factor in distance from center of rectangle to pincers
+    else if (curr_dist > 300.0)
+    {
+      ai->st.state = 201;
+    }
+  }
+  // kick the ball
+  else if (ai->st.state == 205)
+  {
+    kick(ai, blobs);
+    // if the ball moved, we kicked it (probably)
+    if (ball_in_pincers(ai, blobs) == 0)
+    {
+      ai->st.state = 201;
+    }
   }
  }
 
@@ -985,18 +1153,55 @@ void test(struct RoboAI *ai, struct blob *blobs)
   // getchar();
 }
 
+void get_ball_xy(struct RoboAI *ai, struct blob *blobs, double *bx, double *by)
+{
+  if (ai->st.ball == NULL)
+  {
+    (*bx) = ai->st.old_bcx + ai->st.bvx;
+    (*by) = ai->st.old_bcy + ai->st.bvy;
+    return;
+  }
+  (*bx) = ai->st.ball->cx;
+  (*by) = ai->st.ball->cy;
+  
+}
+
 double dist(double x1, double y1, double x2, double y2)
 {
   return sqrt(pow(x1 - x2, 2) + pow(y1 - y2, 2));
 }
 
-void rotate(struct RoboAI *ai, struct blob *blobs, double dx, double dy, char power)
+double signed_rotation(double sx, double sy, double tx, double ty)
+{ 
+  return atan2(sx*ty-sy*tx, sx*tx+sy*ty);
+}
+
+int is_left(struct RoboAI *ai, int prev_left, enum Motion motion)
 {
-  // show the direction of the ball relative to the robot
-  ai->DPhead = addVector(ai->DPhead, ai->st.self->cx, ai->st.self->cy, dx, dy, 40, 255.0, 0.0, 127.0);
-  // pick the smallest angle of rotation
-  // but for now just rotate CCW
-  BT_turn(LEFT_MOTOR, power, RIGHT_MOTOR, -power);
+  int left = prev_left;
+  if (motion == ROTATE)
+  {
+    double tol = 2.44;  // about 140 degrees
+    if (fabs(atan2(ai->st.old_sdx, ai->st.old_sdy) - atan2(ai->st.sdx, ai->st.sdy)) >= tol)
+    {
+      left = prev_left ? 0 : 1;
+    }
+    fprintf(stderr, "old left %d, new left %d\n", prev_left, left);
+  }
+  return left;
+}
+
+void rotate(struct RoboAI *ai, struct blob *blobs, double direction, double power)
+{
+  double adj_power = fmin(fmax(power * fabs(direction), 10.0), 100.0);
+  if (direction > 0)
+  {
+    BT_turn(LEFT_MOTOR, -adj_power, RIGHT_MOTOR, adj_power);
+  }
+  else
+  {
+    BT_turn(LEFT_MOTOR, adj_power, RIGHT_MOTOR, -adj_power);
+  }
 }
 
 void temp_rotate(struct RoboAI *ai, struct blob *blobs, char power)
@@ -1029,11 +1234,49 @@ void move_to_ball(struct RoboAI *ai, struct blob *blobs)
 {
   // determine distance from balll
   // further distance is more power
-  double curr_dist = dist(ai->st.self->cx, ai->st.self->cy, ai->st.ball->cx, ai->st.ball->cy);
+  double bx, by;
+  get_ball_xy(ai, blobs, &bx, &by);
+  double curr_dist = dist(ai->st.self->cx, ai->st.self->cy, bx, by);
   double power = curr_dist/(sqrt(sx^2 + sy^2));
   BT_turn(LEFT_MOTOR, power, RIGHT_MOTOR, power);
  
   
+}
+
+void move_to_target(struct RoboAI *ai, struct blob *blobs, double tx, double ty, double max_power)
+{
+  double path_x, path_y, e, de, ie;
+  path_x = tx - ai->st.self->cx;
+  path_y = ty - ai->st.self->cy;
+  e = signed_rotation(ai->st.smx, ai->st.smy, path_x, path_y);
+  // int iter = 0;
+  // ie = 0;
+  // while(ai->st.self->e_hist[iter] !=  DELIM && iter < 100)
+  // {
+  //     ie += ai->st.self->e_hist[iter];
+  //     iter++;
+  // }
+  // ie += e;
+  // // At this point the current iter value should also be the index of previous e
+  // de = e - ai->st.self->e_hist[iter];
+  // double u = K1*e + K2 *de + K3 *ie;
+  // Now add this e to e_hist
+  // add_to_e_hist(ai, blobs, e);
+
+  double u = K1*e;
+  // Now u from our PID controller is found, use that to inform motion
+  // C is power constant
+  double map_diagonal  = dist(0, 0, sx, sy);
+  double power = fmax(fabs(C*dist(0, 0, path_x, path_y)/map_diagonal), max_power-u);
+  if (u > 0)
+  {
+    BT_turn(LEFT_MOTOR, power, RIGHT_MOTOR, power+u);
+  }
+  else
+  {
+    BT_turn(LEFT_MOTOR, power+u, RIGHT_MOTOR, power);
+  }
+
 }
 
 void move_away_from_obstacles(struct RoboAI *ai, struct blob *blobs)
@@ -1062,8 +1305,8 @@ int ball_in_pincers(struct RoboAI *ai, struct blob *blobs)
 void kick(struct RoboAI *ai, struct blob *blobs)
 {
   BT_drive(RIGHT_MOTOR, LEFT_MOTOR, 40);
-  BT_timed_motor_port_start_v2(KICK_MOTOR, -100, 20);
-  BT_timed_motor_port_start_v2(KICK_MOTOR, 20, 200);
+  BT_timed_motor_port_start_v2(KICK_MOTOR, -100, 75);
+  BT_timed_motor_port_start_v2(KICK_MOTOR, 20, 500);
   BT_all_stop(0);
 }
 
@@ -1077,7 +1320,7 @@ void test_d_backwards(struct RoboAI *ai, struct blob *blobs, int *left)
   // ...or will we? does the image capturing software or track agents keep
   // replacing it with the raw value? lines 402-403 track_agents simply copies
   // whatever is in the blob in curr frame, so check how thats computed in the blob
-  // if blob gives incorrect value at start of each frame...
+  // image capture stores the non modified value in blob each frame so its fine
 
   // so don't overwrite the data in the structs so we can keep the raw value?
   // or change the check to include the direction so it doesnt assume its wrong?
@@ -1125,26 +1368,25 @@ void test_d_rotate(struct RoboAI *ai, struct blob *blobs, int *left)
   //   left = left ? 0 : 1;
   // }
 
-  // assume the old direction vector is correct, but the current one in the
+  // assume the old direction vector is not corrected, and the current one in the
   // AI data has not been corrected yet
-  // we can uncorrect the old angle so we just look if the curr angle
-  // suddenly jumped close to 180 degrees compared to previous
-  double tol = 140.0;
-  if (fabs(atan2(-ai->st.old_sdx, -ai->st.old_sdy) - atan2(ai->st.sdx, ai->st.sdy)) >= tol)
+  double correct_dx, correct_dy;
+  fprintf(stderr, "old left %d ", *left);
+  double tol = 2.44;  // about 140 degrees
+  if (fabs(atan2(ai->st.old_sdx, ai->st.old_sdy) - atan2(ai->st.sdx, ai->st.sdy)) >= tol)
   {
     *left = *left ? 0 : 1;
   }
   // correct heading
-  if (left)
+  if (*left)
   {
-    ai->st.sdx *= -1.0;
-    ai->st.sdy *= -1.0;
-    ai->st.self->dx *= -1.0;
-    ai->st.self->dy *= -1.0;
+    correct_dx = ai->st.sdx * -1.0;
+    correct_dy = ai->st.sdy * -1.0;
   }
-  fprintf(stderr, "Facing %s. sdx %f, sdy %f, angle %f\n", left ? "left" : "right", ai->st.sdx, ai->st.sdy, atan2(ai->st.sdx, ai->st.sdy) * 180.0 / PI);
+  // fprintf(stderr, "Facing %s. sdx %f, sdy %f, angle %f\n", left ? "left" : "right", ai->st.sdx, ai->st.sdy, atan2(ai->st.sdx, ai->st.sdy) * 180.0 / PI);
+  fprintf(stderr, "new left %d, old ang %f, curr %f, corrected %f\n", *left, atan2(ai->st.old_sdx, ai->st.old_sdy) * 180.0 / PI, atan2(ai->st.sdx, ai->st.sdy) * 180.0 / PI, atan2(correct_dx, correct_dy) * 180.0 / PI);
   ai->DPhead = clearDP(ai->DPhead);
-  ai->DPhead = addVector(ai->DPhead, ai->st.self->cx, ai->st.self->cy, ai->st.sdx, ai->st.sdy, 100, 0, 255.0, 0);
+  ai->DPhead = addVector(ai->DPhead, ai->st.self->cx, ai->st.self->cy, correct_dx, correct_dy, 100, 0, 255.0, 0);
   // ROTATE CW
   BT_turn(LEFT_MOTOR, 20, RIGHT_MOTOR, -20);
 }

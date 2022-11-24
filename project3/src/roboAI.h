@@ -76,7 +76,7 @@ struct AI_data{
 	// Self track data. Done separately each frame
     struct blob *self;		       // Current self blob *NULL* if not visible/found
 	double old_scx, old_scy;	   // Previous self (cx,cy)x
-	double old_sdx, old_sdy;	   // Previous self [dx, dy], with the corrected sign
+	double old_sdx, old_sdy;	   // Previous self [dx, dy] from the blob with modification
 	double svx,svy;			       // Current self [vx vy]
 	double smx,smy;			       // Self motion vector
 	double sdx,sdy;                // Self heading direction (from blob shape)
@@ -156,13 +156,29 @@ struct displayList *clearDP(struct displayList *head);
 *****************************************************************************/
 // TODO REMOVE
 void test(struct RoboAI *ai, struct blob *blobs);
+void get_ball_xy(struct RoboAI *ai, struct blob *blobs, double *bx, double *by);
+/* Utility functions */
 double dist(double x1, double y1, double x2, double y2);
-// Rotate robot towards the direction given by the vector [dx, dy]
-void rotate(struct RoboAI *ai, struct blob *blobs, double dx, double dy, char power);
+// Returns the shortest angle (signed) from [sx, sy] to [tx, ty]
+double signed_rotation(double sx, double sy, double tx, double ty);
+enum Motion {
+	FORWARD,
+	BACKWARD,
+	ROTATE
+};
+// Return 1 if facing left or 0 if facing right, given current state and motion
+int is_left(struct RoboAI *ai, int prev_left, enum Motion motion);
+
+/* Robot actions */
+// Rotate robot towards the direction given by the angle in radians (+ CCW, - CW)
+// note angle relative to down so its reverse of what you think.
+// power must be > 0
+void rotate(struct RoboAI *ai, struct blob *blobs, double direction, double power);
 // GOAL SPECIFIC ROTATION; TODO MAKE MORE GENERAL
 void temp_rotate(struct RoboAI *ai, struct blob *blobs, char power);
 // Assuming the robot is facing the ball, drive straight towards ball
 void move_to_ball(struct RoboAI *ai, struct blob *blobs);
+void move_to_target(struct RoboAI *ai, struct blob *blobs, double tx, double ty, double max_power);
 int ball_in_pincers(struct RoboAI *ai, struct blob *blobs);
 void kick(struct RoboAI *ai, struct blob *blobs);
 // TODO: cleanup logic for correcting angle here. 
