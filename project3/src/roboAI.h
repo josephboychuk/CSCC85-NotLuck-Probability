@@ -156,8 +156,11 @@ struct displayList *clearDP(struct displayList *head);
 *****************************************************************************/
 // TODO REMOVE
 void test(struct RoboAI *ai, struct blob *blobs);
+// bx, by point to the ball x,y to be updated by the function
 void get_ball_xy(struct RoboAI *ai, struct blob *blobs, double *bx, double *by);
 void predict_ball_xy(struct RoboAI *ai, struct blob *blobs, double *bx, double *by);
+void predict_self_xy(struct RoboAI *ai, struct blob *blobs, double *bx, double *by);
+// void predict_enemy_xy();
 /* Utility functions */
 double dist(double x1, double y1, double x2, double y2);
 // Returns the shortest angle (signed) from [sx, sy] to [tx, ty]

@@ -1180,6 +1180,30 @@ void get_ball_xy(struct RoboAI *ai, struct blob *blobs, double *bx, double *by)
   
 }
 
+void predict_ball_xy(struct RoboAI *ai, struct blob *blobs, double *bx, double *by)
+{
+  if (ai->st.ball == NULL)
+  {
+    (*bx) = ai->st.old_bcx + 2*ai->st.bvx;
+    (*by) = ai->st.old_bcy + 2*ai->st.bvy;
+    return;
+  }
+  (*bx) = ai->st.ball->cx + ai->st.bvx;
+  (*by) = ai->st.ball->cy + ai->st.bvy;
+}
+
+void predict_self_xy(struct RoboAI *ai, struct blob *blobs, double *bx, double *by)
+{
+  if (ai->st.self == NULL)
+  {
+    (*bx) = ai->st.old_scx + 2*ai->st.svx;
+    (*by) = ai->st.old_scy + 2*ai->st.svy;
+    return;
+  }
+  (*bx) = ai->st.self->cx + ai->st.svx;
+  (*by) = ai->st.self->cy + ai->st.svy;
+}
+
 double dist(double x1, double y1, double x2, double y2)
 {
   return sqrt(pow(x1 - x2, 2) + pow(y1 - y2, 2));
