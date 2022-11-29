@@ -157,14 +157,14 @@ struct displayList *clearDP(struct displayList *head);
 // TODO REMOVE
 void test(struct RoboAI *ai, struct blob *blobs);
 void get_ball_xy(struct RoboAI *ai, struct blob *blobs, double *bx, double *by);
+void predict_ball_xy(struct RoboAI *ai, struct blob *blobs, double *bx, double *by);
 /* Utility functions */
 double dist(double x1, double y1, double x2, double y2);
 // Returns the shortest angle (signed) from [sx, sy] to [tx, ty]
 double signed_rotation(double sx, double sy, double tx, double ty);
 enum Motion {
-	FORWARD,
-	BACKWARD,
-	ROTATE
+	GENERAL,
+	DIRECTIONAL
 };
 // Return 1 if facing left or 0 if facing right, given current state and motion
 int is_left(struct RoboAI *ai, int prev_left, enum Motion motion);

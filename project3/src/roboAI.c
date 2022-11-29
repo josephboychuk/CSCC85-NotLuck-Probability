@@ -794,12 +794,7 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
   // we set it
   // Save the old direction vector that doesnt have the corrected sign
   // TODO: hacked the initialization logic
-  if (ai->st.sdx < 0)
-  {
-    ai->st.sdx *= -1.0;
-    ai->st.sdy *= -1.0;
-    left = 1;
-  }
+  is_left(ai, left, GENERAL);
 
   ai->st.old_sdx = ai->st.sdx;
   ai->st.old_sdy = ai->st.sdy;
@@ -1178,8 +1173,7 @@ double signed_rotation(double sx, double sy, double tx, double ty)
 
 int is_left(struct RoboAI *ai, int prev_left, enum Motion motion)
 {
-  int left = prev_left;
-  if (motion == ROTATE)
+  if (motion == GENERAL)
   {
     double tol = 2.44;  // about 140 degrees
     if (fabs(atan2(ai->st.old_sdx, ai->st.old_sdy) - atan2(ai->st.sdx, ai->st.sdy)) >= tol)
@@ -1187,6 +1181,20 @@ int is_left(struct RoboAI *ai, int prev_left, enum Motion motion)
       left = prev_left ? 0 : 1;
     }
     fprintf(stderr, "old left %d, new left %d\n", prev_left, left);
+  }
+  if (motion == DIRECTIONAL)
+  {
+    if (ai->st.self->smx < 0)
+    {
+      left = prev_left ? 0 : 1;
+    }
+  }
+  int left = prev_left;
+  if (ai->st.sdx < 0)
+  {
+    ai->st.sdx *= -1.0;
+    ai->st.sdy *= -1.0;
+    left = 1;
   }
   return left;
 }
