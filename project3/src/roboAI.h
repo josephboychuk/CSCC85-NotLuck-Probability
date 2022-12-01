@@ -164,9 +164,9 @@ void test(struct RoboAI *ai, struct blob *blobs);
  */
 void get_ball_xy(struct RoboAI *ai, struct blob *blobs, double *x, double *y);
 void get_self_xy(struct RoboAI *ai, struct blob *blobs, double *x, double *y);
-void predict_ball_xy(struct RoboAI *ai, struct blob *blobs, double *x, double *y);
-void predict_self_xy(struct RoboAI *ai, struct blob *blobs, double *x, double *y);
-void predict_opponent_xy(struct RoboAI *ai, struct blob *blobs, double *x, double *y);
+void predict_ball_xy(struct RoboAI *ai, double *x, double *y);
+void predict_self_xy(struct RoboAI *ai, double *x, double *y);
+void predict_opponent_xy(struct RoboAI *ai, double *x, double *y);
 // void predict_enemy_xy();
 /* Utility functions */
 double dist(double x1, double y1, double x2, double y2);
@@ -176,7 +176,8 @@ double signed_rotation(double sx, double sy, double tx, double ty);
 // boundary (out of bounds)
 int predict_oob(struct RoboAI *ai, struct blob *blobs);
 int should_defend(struct RoboAI *ai);
-
+double defense_x_position(struct RoboAI *ai,  double oppx);
+double signed_block_distance(struct RoboAI *ai);
 /* Robot actions */
 // Rotate robot towards the direction given by the angle in radians (+ CCW, - CW)
 // note angle relative to down so its reverse of what you think.

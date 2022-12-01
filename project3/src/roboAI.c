@@ -35,6 +35,10 @@
 #define ANG_ROTATE_TOWARDS 0.21
 #define ANG_PINCERS 0.07
 #define ANG_GOAL 0.3 // about 12 ish
+// Defense constants
+#define BLOCKING_THRESH 100.0
+#define BEATABLE_DIST 150.0
+#define ENEMY_CONTROL_RADIUS 100.0
 // PID controller constants
 #define K1 50
 #define K2 1
@@ -999,26 +1003,62 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
   else if (ai->st.state == 50)
   {
     fprintf(stderr, "[050] return to own side\n");
+    predict_opponent_xy(ai, &oppx, &oppy);
+    predict_self_xy(ai, &selfx, &selfy);
+    double defx = defense_x_position(ai, oppx);
+    double defy = sy/2;
     if (!should_defend(ai))
     {
       ai->st.state = 1;
+    }
+    else if (fabs(dist(selfx, selfy, defx, defy)) < BLOCKING_THRESH)
+    {
+      ai->st.state = 52;
+    }
+    else
+    {
+      move_to_target(ai, blobs, defx, defy, selfx, selfy, 50);
     }
   }
   else if (ai->st.state == 51)
   {
     fprintf(stderr, "[051] position for defense\n");
+    predict_self_xy(ai, &selfx, &selfy);
+    // Aim to be vertical
+    double ang = signed_rotation(ai->st.sdx, ai->st.sdy, selfx, 0);
+
     if (!should_defend(ai))
     {
       ai->st.state = 1;
     }
+    else if (fabs(ang) <= ANG_ROTATE_TOWARDS)
+    {
+      BT_all_stop(1);
+      ai->st.state = 52;
+    }
+    else
+    {
+      rotate(ai, blobs, ang, 30.0);
+    }
+
   }
   else if (ai->st.state == 52)
   {
     fprintf(stderr, "[052] block path of ball\n");
+    double target_y_movement = signed_block_distance(ai);
     if (!should_defend(ai))
     {
       ai->st.state = 1;
     }
+    else if (signed_block_distance > 0)
+    {
+      BT_drive(LEFT_MOTOR, RIGHT_MOTOR, -30);
+    }
+    else
+    {
+      BT_drive(LEFT_MOTOR, RIGHT_MOTOR, 30);
+    }
+    
   }
   // MOVE AWAY FROM OBSTACLES...
   // TODO IMPLEMENT; right now it skips to driving backwards from the boundaries
@@ -1052,8 +1092,8 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
     // Rotate towards ball
     // TODO recdeclare when moving this funcrtion out of AI_main
     // double face_ball_dx, face_ball_dy;
-    predict_ball_xy(ai, blobs, &bx, &by);
-    predict_self_xy(ai, blobs, &selfx, &selfy);
+    predict_ball_xy(ai, &bx, &by);
+    predict_self_xy(ai, &selfx, &selfy);
     face_ball_dx = bx - selfx;
     face_ball_dy = by - selfy;
     double ang = signed_rotation(ai->st.sdx, ai->st.sdy, face_ball_dx, face_ball_dy);
@@ -1072,8 +1112,8 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
   else if (ai->st.state == 102)
   {
     ai->DPhead = clearDP(ai->DPhead);
-    predict_ball_xy(ai, blobs, &bx, &by);
-    predict_self_xy(ai, blobs, &selfx, &selfy);
+    predict_ball_xy(ai, &bx, &by);
+    predict_self_xy(ai, &selfx, &selfy);
     move_to_target(ai, blobs, bx, by, selfx, selfy, 100);
     // TODO state transition
     double old_dist = dist(old_scx, old_scy, bx, by);
@@ -1105,7 +1145,7 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
     // TODO redeclare when separating this out from AI_main. right now
     // we are redeclaring variables!
     // double correct_dx, correct_dy, face_ball_dx, face_ball_dy;
-    predict_ball_xy(ai, blobs, &bx, &by);
+    predict_ball_xy(ai, &bx, &by);
     // TODO SELF NULL CHECK
     face_ball_dx = bx - ai->st.self->cx;
     face_ball_dy = by - ai->st.self->cy;
@@ -1133,8 +1173,8 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
   else if (ai->st.state == 104)
   {
     ai->DPhead = clearDP(ai->DPhead);
-    predict_ball_xy(ai, blobs, &bx, &by);
-    predict_self_xy(ai, blobs, &selfx, &selfy);
+    predict_ball_xy(ai, &bx, &by);
+    predict_self_xy(ai, &selfx, &selfy);
     move_to_target(ai, blobs, bx, by, selfx, selfy, 30);
     double old_dist = dist(old_scx, old_scy, bx, by);
     double curr_dist = dist(selfx, selfy, bx, by);
@@ -1165,8 +1205,8 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
     fprintf(stderr, "[105] aiming ball at goal\n");
     double face_goal_dx, face_goal_dy, ang;
     double goal_x, goal_y;
-    predict_ball_xy(ai, blobs, &bx, &by);
-    predict_self_xy(ai, blobs, &selfx, &selfy);
+    predict_ball_xy(ai, &bx, &by);
+    predict_self_xy(ai, &selfx, &selfy);
     goal_x = sx * (1.0 - ai->st.side);
     goal_y = sy / 2.0;
     face_goal_dx = goal_x - selfx;
@@ -1226,7 +1266,7 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
   {
     fprintf(stderr, "[190] moving away from boundary\n");
     int dist = 100;
-    predict_self_xy(ai, blobs, &selfx, &selfy);
+    predict_self_xy(ai, &selfx, &selfy);
     // at least dist away from every boundary then we're good
     if (selfx >= dist && selfx <= (sx - dist) && selfy >= dist && selfy <= (sy - dist))
     {
@@ -1266,8 +1306,8 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
   else if (ai->st.state == 202)
   {
     ai->DPhead = clearDP(ai->DPhead);
-    predict_ball_xy(ai, blobs, &bx, &by);
-    predict_self_xy(ai, blobs, &selfx, &selfy);
+    predict_ball_xy(ai, &bx, &by);
+    predict_self_xy(ai, &selfx, &selfy);
     move_to_target(ai, blobs, bx, by, selfx, selfy, 100);
     // TODO state transition
     double old_dist = dist(old_scx, old_scy, bx, by);
@@ -1326,8 +1366,8 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
   else if (ai->st.state == 204)
   {
     ai->DPhead = clearDP(ai->DPhead);
-    predict_ball_xy(ai, blobs, &bx, &by);
-    predict_self_xy(ai, blobs, &selfx, &selfy);
+    predict_ball_xy(ai, &bx, &by);
+    predict_self_xy(ai, &selfx, &selfy);
     move_to_target(ai, blobs, bx, by, selfx, selfy, 30);
     double old_dist = dist(old_scx, old_scy, bx, by);
     double curr_dist = dist(selfx, selfy, bx, by);
@@ -1434,7 +1474,7 @@ void get_self_xy(struct RoboAI *ai, struct blob *blobs, double *x, double *y)
   }
 }
 
-void predict_ball_xy(struct RoboAI *ai, struct blob *blobs, double *x, double *y)
+void predict_ball_xy(struct RoboAI *ai, double *x, double *y)
 {
   // 4 cases:
   //  null vs valid blob -> null case add velocity to old pos to get current pos
@@ -1469,7 +1509,7 @@ void predict_ball_xy(struct RoboAI *ai, struct blob *blobs, double *x, double *y
   }
 }
 
-void predict_self_xy(struct RoboAI *ai, struct blob *blobs, double *x, double *y)
+void predict_self_xy(struct RoboAI *ai, double *x, double *y)
 {
   // 4 cases:
   //  null vs valid blob -> null case add velocity to old pos to get current pos
@@ -1504,7 +1544,7 @@ void predict_self_xy(struct RoboAI *ai, struct blob *blobs, double *x, double *y
   }
 }
 
-void predict_opponent_xy(struct RoboAI *ai, struct blob *blobs, double *x, double *y)
+void predict_opponent_xy(struct RoboAI *ai, double *x, double *y)
 {
   // 4 cases:
   //  null vs valid blob -> null case add velocity to old pos to get current pos
@@ -1552,14 +1592,64 @@ double signed_rotation(double sx, double sy, double tx, double ty)
 int predict_oob(struct RoboAI *ai, struct blob *blobs)
 {
   double x, y;
-  predict_self_xy(ai, blobs, &x, &y);
+  predict_self_xy(ai, &x, &y);
   return x < 0 || x > sx || y < 0 || y > sy;
 }
 
 // TODO IMPLEMENT
 int should_defend(struct RoboAI *ai)
 {
-  return 1;
+  double bx, by, selfx, selfy, oppx, oppy;
+  predict_ball_xy(ai, &bx, &by);
+  predict_self_xy(ai, &selfx, &selfy);
+  predict_opponent_xy(ai, &oppx, &oppy);
+
+  double ball_to_self = dist(bx, by, selfx, selfy);
+  double ball_to_opp = dist(bx, by, oppx, oppy);
+  fprintf(stderr, "ball to self: %f, ball to enemy %f\n", ball_to_self, ball_to_opp);
+
+  if (ball_to_self - ball_to_opp > BEATABLE_DIST || ball_to_opp < ENEMY_CONTROL_RADIUS)
+  {
+    return 1;
+  }
+  return 0;
+}
+
+double defense_x_position(struct RoboAI *ai, double oppx)
+{ 
+  // Left side defense
+  if (ai->st.side == 0)
+  {
+    return oppx/2;
+  }
+  // Right side defense
+  else
+  {
+    return 0.8 * sx;
+  }
+}
+
+double signed_block_distance(struct RoboAI *ai)
+{
+  double bx, by, selfx, selfy, ball_path_x, ball_path_y;
+  predict_ball_xy(ai, &bx, &by);
+  predict_self_xy(ai, &selfx, &selfy);
+  
+  // Defending left side
+  if (ai->st.side == 0)
+  {
+    ball_path_x = -bx;
+    ball_path_y = sy/2 - by;
+  }
+  // Defending right side
+  else
+  {
+    ball_path_x = sx;
+    ball_path_y = sy/2 - by;
+  }
+
+  return ball_path_y*((selfx - bx)/ball_path_x) - selfy;
+
 }
 
 // TODO REMOVE
