@@ -171,12 +171,6 @@ void predict_self_xy(struct RoboAI *ai, struct blob *blobs, double *x, double *y
 double dist(double x1, double y1, double x2, double y2);
 // Returns the shortest angle (signed) from [sx, sy] to [tx, ty]
 double signed_rotation(double sx, double sy, double tx, double ty);
-enum Motion {
-	GENERAL,
-	DIRECTIONAL
-};
-// Return 1 if facing left or 0 if facing right, given current state and motion
-int is_left(struct RoboAI *ai, int prev_left, enum Motion motion);
 
 /* Robot actions */
 // Rotate robot towards the direction given by the angle in radians (+ CCW, - CW)
@@ -190,7 +184,4 @@ void move_to_ball(struct RoboAI *ai, struct blob *blobs);
 void move_to_target(struct RoboAI *ai, struct blob *blobs, double tx, double ty, double max_power);
 int ball_in_pincers(struct RoboAI *ai, struct blob *blobs);
 void kick(struct RoboAI *ai, struct blob *blobs);
-// TODO: cleanup logic for correcting angle here. 
-void test_d_backwards(struct RoboAI *ai, struct blob *blobs, int *left);
-void test_d_rotate(struct RoboAI *ai, struct blob *blobs, int *left);
 #endif

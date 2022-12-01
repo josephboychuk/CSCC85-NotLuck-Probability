@@ -703,8 +703,6 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
   char line[1024];
   static int count=0;
   static double old_dx=0, old_dy=0;
-  // True (1) if robot is facing left
-  static int left = 0;
       
   /************************************************************
    * Standard initialization routine for starter code,
@@ -742,10 +740,6 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
            ai->st.self->dy*=-1.0;
            ai->st.sdx*=-1;
            ai->st.sdy*=-1;
-           // We know the direction is only correct when the robot is actually
-           // facing the right side of the field. So if it doesn't agree with
-           // the motion vector, the robot must be facing left
-          //  left = 1;
        }
        old_dx=ai->st.sdx;
        old_dy=ai->st.sdy;
@@ -793,51 +787,51 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
   double old_scx = ai->st.old_scx;
   double old_scy = ai->st.old_scy;
   // TODO remove when refactoring the state functions out
-  double correct_dx, correct_dy, face_ball_dx, face_ball_dy, bx, by;
-  // TODO: check if not setting an initial value for the new struct variable
-  // is safe. it seems like it is cause we're not accessing its value before
-  // we set it
-  // Save the old direction vector that doesnt have the corrected sign
-  // TODO: hacked the initialization logic
-  left = is_left(ai, left, GENERAL);
-
+  double face_ball_dx, face_ball_dy, bx, by;
+  // Save the previous heading for correction purposes
   ai->st.old_sdx = ai->st.sdx;
   ai->st.old_sdy = ai->st.sdy;
   track_agents(ai,blobs);
+  // Correct the heading vector. Invariant: previous heading vector is correct
+  // If the sign of the current heading is opposite of the previous, then
+  // it must be flipped. We can check that their dot product is negative.
+  // Due to noise, the previous and current may be close to directly up and down
+  // but the x components may be the same sign. However, the magnitude of x is
+  // close to 0 so the product of the y components which has magnitude close to
+  // 1 should overpower the x product and still result in a negative dot product
+  // fprintf(stderr, "Correcting heading: prev [%f, %f], curr [%f, %f], ", ai->st.old_sdx, ai->st.old_sdy, ai->st.sdx, ai->st.sdy);
+  if (ai->st.old_sdx*ai->st.sdx + ai->st.old_sdy*ai->st.sdy < 0)
+  {
+    if (ai->st.self != NULL)
+    {
+      ai->st.self->dx*=-1.0;
+      ai->st.self->dy*=-1.0;
+    }
+    ai->st.sdx*=-1;
+    ai->st.sdy*=-1;
+  }
+  // fprintf(stderr, "correction [%f, %f]\n", ai->st.sdx, ai->st.sdy);
+
   // fprintf(stderr, "");
   // TODO REMOVE. THIS JUST FORCES US INTO 1 CONDITIONAL FOR TESTING
-  //ai->st.state = 102;
-  if (ai->st.state == 301)
-  {
-    fprintf(stderr, "[TEST] ");
-    test_d_rotate(ai, blobs, &left);
-  }
+  // ai->st.state = 401; // impossible state so we can move bot manually and print the heading correction
 
   if (ai->st.state == 101)
   {
     fprintf(stderr, "[101] rotate towards ball\n");
     // Rotate towards ball
     // TODO recdeclare when moving this funcrtion out of AI_main
-    // double correct_dx, correct_dy, face_ball_dx, face_ball_dy;
-    //left = is_left(ai, left, GENERAL);
-    // correct heading
-    correct_dx = ai->st.sdx;
-    correct_dy = ai->st.sdy;
-    if (left)
-    {
-      correct_dx *= -1.0;
-      correct_dy *= -1.0;
-    }
+    // double face_ball_dx, face_ball_dy;
     get_ball_xy(ai, blobs, &bx, &by);
     // TODO SELF NULL CHECK
     face_ball_dx = bx - ai->st.self->cx;
     face_ball_dy = by - ai->st.self->cy;
-    double ang = signed_rotation(correct_dx, correct_dy, face_ball_dx, face_ball_dy);
+    double ang = signed_rotation(ai->st.sdx, ai->st.sdy, face_ball_dx, face_ball_dy);
     ai->DPhead = clearDP(ai->DPhead);
-    ai->DPhead = addVector(ai->DPhead, ai->st.self->cx, ai->st.self->cy, correct_dx, correct_dy, 100, 0, 255.0, 0);
+    ai->DPhead = addVector(ai->DPhead, ai->st.self->cx, ai->st.self->cy, ai->st.sdx, ai->st.sdy, 100, 0, 255.0, 0);
     rotate(ai, blobs, ang, 30.0);
-    fprintf(stderr, "raw [%f, %f], correct [%f, %f]\n", ai->st.sdx, ai->st.sdy, correct_dx, correct_dy);
-    fprintf(stderr, "goal atan2 heading: %f, robot: %f\n", atan2(face_ball_dx, face_ball_dy) * 180.0 / PI, atan2(correct_dx, correct_dy) * 180.0 / PI);
+    fprintf(stderr, "raw [%f, %f], correct [%f, %f]\n", ai->st.sdx, ai->st.sdy, ai->st.sdx, ai->st.sdy);
+    fprintf(stderr, "goal atan2 heading: %f, robot: %f\n", atan2(face_ball_dx, face_ball_dy) * 180.0 / PI, atan2(ai->st.sdx, ai->st.sdy) * 180.0 / PI);
     // Facing the ball, within 8 degrees
 
     if (fabs(ang) <= ANG_ROTATE_TOWARDS)
@@ -853,7 +847,6 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
     ai->DPhead = clearDP(ai->DPhead);
     get_ball_xy(ai, blobs, &bx, &by);
     move_to_target(ai, blobs, bx, by, 100);
-    // left = is_left(ai, left, DIRECTIONAL);
     // TODO state transition
     double old_dist = dist(old_scx, old_scy, bx, by);
     // TODO self NULL check
@@ -897,22 +890,13 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
     // TODO redeclare when separating this out from AI_main. right now
     // we are redeclaring variables!
     // double correct_dx, correct_dy, face_ball_dx, face_ball_dy;
-    //left = is_left(ai, left, ROTATE);
-    // correct heading
-    correct_dx = ai->st.sdx;
-    correct_dy = ai->st.sdy;
-    if (left)
-    {
-      correct_dx *= -1;
-      correct_dy *= -1;
-    }
     get_ball_xy(ai, blobs, &bx, &by);
     // TODO SELF NULL CHECK
     face_ball_dx = bx - ai->st.self->cx;
     face_ball_dy = by - ai->st.self->cy;
     ai->DPhead = clearDP(ai->DPhead);
     double curr_dist = dist(ai->st.self->cx, ai->st.self->cy, bx, by);
-    double ang = signed_rotation(correct_dx, correct_dy, face_ball_dx, face_ball_dy);
+    double ang = signed_rotation(ai->st.sdx, ai->st.sdy, face_ball_dx, face_ball_dy);
     // Facing the ball, within some degrees
     if (fabs(ang) <= ANG_PINCERS)
     {
@@ -927,7 +911,7 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
     else
     {
       rotate(ai, blobs, ang, 10);
-      fprintf(stderr, "goal atan2 heading: %f, robot: %f\n", atan2(face_ball_dx, face_ball_dy) * 180.0 / PI, atan2(correct_dx, correct_dy) * 180.0 / PI);
+      fprintf(stderr, "goal atan2 heading: %f, robot: %f\n", atan2(face_ball_dx, face_ball_dy) * 180.0 / PI, atan2(ai->st.sdx, ai->st.sdy) * 180.0 / PI);
     }
   }
   // position ball in pincers
@@ -936,7 +920,6 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
     ai->DPhead = clearDP(ai->DPhead);
     get_ball_xy(ai, blobs, &bx, &by);
     move_to_target(ai, blobs, bx, by, 30);
-    // left = is_left(ai, left, DIRECTIONAL);
     double old_dist = dist(old_scx, old_scy, bx, by);
     // TODO SELF NULL CHECK
     double curr_dist = dist(ai->st.self->cx, ai->st.self->cy, bx, by);
@@ -973,16 +956,7 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
     // plot the path to the goal (magenta line)
     ai->DPhead = addCross(ai->DPhead, goal_x, goal_y, 75, 255, 0, 0);
     ai->DPhead = addLine(ai->DPhead, goal_x, goal_y, ai->st.self->cx, ai->st.self->cy, 255, 0, 255);
-    //left = is_left(ai, left, GENERAL);
-    // correct heading
-    correct_dx = ai->st.sdx;
-    correct_dy = ai->st.sdy;
-    if (left)
-    {
-      correct_dx *= -1.0;
-      correct_dy *= -1.0;
-    }
-    ang = signed_rotation(correct_dx, correct_dy, face_goal_dx, face_goal_dy);
+    ang = signed_rotation(ai->st.sdx, ai->st.sdy, face_goal_dx, face_goal_dy);
     // if ball fell out of pincers, get it back
     if (ball_in_pincers(ai, blobs) == 0)
     {
@@ -1033,24 +1007,15 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
     // Rotate towards ball
     // TODO recdeclare when moving this funcrtion out of AI_main
     // double correct_dx, correct_dy, face_ball_dx, face_ball_dy;
-    //left = is_left(ai, left, GENERAL);
-    // correct heading
-    correct_dx = ai->st.sdx;
-    correct_dy = ai->st.sdy;
-    if (left)
-    {
-      correct_dx *= -1.0;
-      correct_dy *= -1.0;
-    }
     get_ball_xy(ai, blobs, &bx, &by);
     face_ball_dx = bx - ai->st.self->cx;
     face_ball_dy = by - ai->st.self->cy;
-    double ang = signed_rotation(correct_dx, correct_dy, face_ball_dx, face_ball_dy);
+    double ang = signed_rotation(ai->st.sdx, ai->st.sdy, face_ball_dx, face_ball_dy);
     ai->DPhead = clearDP(ai->DPhead);
-    ai->DPhead = addVector(ai->DPhead, ai->st.self->cx, ai->st.self->cy, correct_dx, correct_dy, 100, 0, 255.0, 0);
+    ai->DPhead = addVector(ai->DPhead, ai->st.self->cx, ai->st.self->cy, ai->st.sdx, ai->st.sdy, 100, 0, 255.0, 0);
     rotate(ai, blobs, ang, 30.0);
-    fprintf(stderr, "raw [%f, %f], correct [%f, %f]\n", ai->st.sdx, ai->st.sdy, correct_dx, correct_dy);
-    fprintf(stderr, "goal atan2 heading: %f, robot: %f\n", atan2(face_ball_dx, face_ball_dy) * 180.0 / PI, atan2(correct_dx, correct_dy) * 180.0 / PI);
+    fprintf(stderr, "raw [%f, %f], correct [%f, %f]\n", ai->st.sdx, ai->st.sdy, ai->st.sdx, ai->st.sdy);
+    fprintf(stderr, "goal atan2 heading: %f, robot: %f\n", atan2(face_ball_dx, face_ball_dy) * 180.0 / PI, atan2(ai->st.sdx, ai->st.sdy) * 180.0 / PI);
     // Facing the ball, within 8 degrees
 
     if (fabs(ang) <= 0.21)
@@ -1066,7 +1031,6 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
     ai->DPhead = clearDP(ai->DPhead);
     get_ball_xy(ai, blobs, &bx, &by);
     move_to_target(ai, blobs, bx, by, 100);
-    // left = is_left(ai, left, DIRECTIONAL);
     // TODO state transition
     double old_dist = dist(old_scx, old_scy, bx, by);
     double curr_dist = dist(ai->st.self->cx, ai->st.self->cy, bx, by);
@@ -1102,23 +1066,14 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
     // TODO redeclare when separating this out from AI_main. right now
     // we are redeclaring variables!
     // double correct_dx, correct_dy, face_ball_dx, face_ball_dy;
-    //left = is_left(ai, left, GENERAL);
-    // correct heading
-    correct_dx = ai->st.sdx;
-    correct_dy = ai->st.sdy;
-    if (left)
-    {
-      correct_dx *= -1;
-      correct_dy *= -1;
-    }
     get_ball_xy(ai, blobs, &bx, &by);
     face_ball_dx = bx - ai->st.self->cx;
     face_ball_dy = by - ai->st.self->cy;
     ai->DPhead = clearDP(ai->DPhead);
     double curr_dist = dist(ai->st.self->cx, ai->st.self->cy, bx, by);
-    double ang = signed_rotation(correct_dx, correct_dy, face_ball_dx, face_ball_dy);
+    double ang = signed_rotation(ai->st.sdx, ai->st.sdy, face_ball_dx, face_ball_dy);
     rotate(ai, blobs, ang, 10);
-    fprintf(stderr, "goal atan2 heading: %f, robot: %f\n", atan2(face_ball_dx, face_ball_dy) * 180.0 / PI, atan2(correct_dx, correct_dy) * 180.0 / PI);
+    fprintf(stderr, "goal atan2 heading: %f, robot: %f\n", atan2(face_ball_dx, face_ball_dy) * 180.0 / PI, atan2(ai->st.sdx, ai->st.sdy) * 180.0 / PI);
     // Facing the ball, within a 8 degrees
     if (fabs(ang) <= ANG_PINCERS)
     {
@@ -1137,7 +1092,6 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
     ai->DPhead = clearDP(ai->DPhead);
     get_ball_xy(ai, blobs, &bx, &by);
     move_to_target(ai, blobs, bx, by, 30);
-    // left = is_left(ai, left, DIRECTIONAL);
     // TODO state transition
     double old_dist = dist(old_scx, old_scy, bx, by);
     double curr_dist = dist(ai->st.self->cx, ai->st.self->cy, bx, by);
@@ -1251,37 +1205,39 @@ double signed_rotation(double sx, double sy, double tx, double ty)
   return atan2(sx*ty-sy*tx, sx*tx+sy*ty);
 }
 
-int is_left(struct RoboAI *ai, int prev_left, enum Motion motion)
-{
-  int left = prev_left;
-  if (motion == GENERAL)
-  {
-    double tol = 2.44;  // about 140 degrees
-    if (fabs(atan2(ai->st.old_sdx, ai->st.old_sdy) - atan2(ai->st.sdx, ai->st.sdy)) >= tol)
-    {
-      left = prev_left ? 0 : 1;
-    }
-    fprintf(stderr, "old left %d, new left %d\n", prev_left, left);
-  }
-  // if (motion == DIRECTIONAL)
-  // {
-  //   if (ai->st.smx < 0)
-  //   {
-  //     left = 1;
-  //   }
-  //   else
-  //   {
-  //     left = 0;
-  //   }
-  // }
-  if (ai->st.sdx < 0)
-  {
-    ai->st.sdx *= -1.0;
-    ai->st.sdy *= -1.0;
-    left = 1;
-  }
-  return left;
-}
+
+// TODO REMOVE
+// int is_left(struct RoboAI *ai, int prev_left, enum Motion motion)
+// {
+//   int left = prev_left;
+//   if (motion == GENERAL)
+//   {
+//     double tol = 2.44;  // about 140 degrees
+//     if (fabs(atan2(ai->st.old_sdx, ai->st.old_sdy) - atan2(ai->st.sdx, ai->st.sdy)) >= tol)
+//     {
+//       left = prev_left ? 0 : 1;
+//     }
+//     fprintf(stderr, "old left %d, new left %d\n", prev_left, left);
+//   }
+//   // if (motion == DIRECTIONAL)
+//   // {
+//   //   if (ai->st.smx < 0)
+//   //   {
+//   //     left = 1;
+//   //   }
+//   //   else
+//   //   {
+//   //     left = 0;
+//   //   }
+//   // }
+//   if (ai->st.sdx < 0)
+//   {
+//     ai->st.sdx *= -1.0;
+//     ai->st.sdy *= -1.0;
+//     left = 1;
+//   }
+//   return left;
+// }
 
 void rotate(struct RoboAI *ai, struct blob *blobs, double direction, double power)
 {
@@ -1403,85 +1359,4 @@ void kick(struct RoboAI *ai, struct blob *blobs)
   BT_timed_motor_port_start_v2(KICK_MOTOR, -100, 75);
   BT_timed_motor_port_start_v2(KICK_MOTOR, 20, 500);
   BT_all_stop(0);
-}
-
-// TODO CLEANUP direction vector correction logic
-void test_d_backwards(struct RoboAI *ai, struct blob *blobs, int *left)
-{
-  // fprintf(stderr, "Correcting heading direction while moving\n");
-  // moving backwards
-  // WAIT! if we store the corrected direction, next frame we're going to
-  // see we're still pointing left (possibly) and we'll flip the CORRECTED direction!
-  // ...or will we? does the image capturing software or track agents keep
-  // replacing it with the raw value? lines 402-403 track_agents simply copies
-  // whatever is in the blob in curr frame, so check how thats computed in the blob
-  // image capture stores the non modified value in blob each frame so its fine
-
-  // so don't overwrite the data in the structs so we can keep the raw value?
-  // or change the check to include the direction so it doesnt assume its wrong?
-  // could check it's facing the wrong direction by checking if product of
-  // x's is < 0 (only happens if signs are different) AND y product is < 0
-    // this works with both incorrect and corrected vectors, so we could overwrite it
-  // with a motion vector, we don't need to check left or right, but
-  // we'll need it for rotation
-  *left = ai->st.smx <= 0 ? 1 : 0;
-  if (!left)
-  {
-    // MODIFYS THE RAW ANGLE!! consider just returning the corrected angle
-    // or flip it in the calling code instead without modifying raw value
-    ai->st.sdx *= -1.0;
-    ai->st.sdy *= -1.0;
-    ai->st.self->dx *= -1.0;
-    ai->st.self->dy *= -1.0;
-  }
-  fprintf(stderr, "Facing %s. sdx %f, sdy %f, angle %f\n", !left ? "left" : "right", ai->st.sdx, ai->st.sdy, atan2(ai->st.sdx, ai->st.sdy) * 180.0 / PI);
-  ai->DPhead = clearDP(ai->DPhead);
-  ai->DPhead = addVector(ai->DPhead, ai->st.self->cx, ai->st.self->cy, ai->st.sdx, ai->st.sdy, 100, 0, 255.0, 0);
-  if (ai->st.self->cx > 100.0 && ai->st.self->cx < (sx - 100.0) &&
-      ai->st.self->cy > 100.0 && ai->st.self->cy < (sy - 100.0))
-  {
-    BT_drive(LEFT_MOTOR, RIGHT_MOTOR, -20);
-  }
-  else
-  {
-    BT_all_stop(0);
-  }
-}
-
-// WIP
-void test_d_rotate(struct RoboAI *ai, struct blob *blobs, int *left)
-{
-  // assume old direction vector is the raw one that hasnt been
-  // corrected?
-
-  // // assuming the dx, dy and left has been kept correct
-  // // if it rotates from +0 to -0 or +180 to -180 or other way around for either
-  // // then the bot changes x direction (left -> right, vice versa)
-  // // only the x changes sign at 0 or 180
-  // if (ai->st.sdx * old_sdx < 0)
-  // {
-  //   left = left ? 0 : 1;
-  // }
-
-  // assume the old direction vector is not corrected, and the current one in the
-  // AI data has not been corrected yet
-  double correct_dx, correct_dy;
-  fprintf(stderr, "old left %d ", *left);
-  double tol = 2.44;  // about 140 degrees
-  if (fabs(atan2(ai->st.old_sdx, ai->st.old_sdy) - atan2(ai->st.sdx, ai->st.sdy)) >= tol)
-  {
-    *left = *left ? 0 : 1;
-  }
-  // correct heading
-  if (*left)
-  {
-    correct_dx = ai->st.sdx * -1.0;
-    correct_dy = ai->st.sdy * -1.0;
-  }
-  // fprintf(stderr, "Facing %s. sdx %f, sdy %f, angle %f\n", left ? "left" : "right", ai->st.sdx, ai->st.sdy, atan2(ai->st.sdx, ai->st.sdy) * 180.0 / PI);
-  fprintf(stderr, "new left %d, old ang %f, curr %f, corrected %f\n", *left, atan2(ai->st.old_sdx, ai->st.old_sdy) * 180.0 / PI, atan2(ai->st.sdx, ai->st.sdy) * 180.0 / PI, atan2(correct_dx, correct_dy) * 180.0 / PI);
-  ai->DPhead = clearDP(ai->DPhead);
-  ai->DPhead = addVector(ai->DPhead, ai->st.self->cx, ai->st.self->cy, correct_dx, correct_dy, 100, 0, 255.0, 0);
-  // ROTATE CW
-  BT_turn(LEFT_MOTOR, 20, RIGHT_MOTOR, -20);
 }
