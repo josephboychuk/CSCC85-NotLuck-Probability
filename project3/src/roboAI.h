@@ -156,10 +156,16 @@ struct displayList *clearDP(struct displayList *head);
 *****************************************************************************/
 // TODO REMOVE
 void test(struct RoboAI *ai, struct blob *blobs);
-// bx, by point to the ball x,y to be updated by the function
-void get_ball_xy(struct RoboAI *ai, struct blob *blobs, double *bx, double *by);
-void predict_ball_xy(struct RoboAI *ai, struct blob *blobs, double *bx, double *by);
-void predict_self_xy(struct RoboAI *ai, struct blob *blobs, double *bx, double *by);
+
+// TODO trim function arguments not being used
+/*
+ * Utility functions to estimate state variables when blob is NULL.  
+ * x, y are pointers to the variables to be updated
+ */
+void get_ball_xy(struct RoboAI *ai, struct blob *blobs, double *x, double *y);
+void get_self_xy(struct RoboAI *ai, struct blob *blobs, double *x, double *y);
+void predict_ball_xy(struct RoboAI *ai, struct blob *blobs, double *x, double *y);
+void predict_self_xy(struct RoboAI *ai, struct blob *blobs, double *x, double *y);
 // void predict_enemy_xy();
 /* Utility functions */
 double dist(double x1, double y1, double x2, double y2);
