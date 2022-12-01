@@ -175,6 +175,7 @@ double signed_rotation(double sx, double sy, double tx, double ty);
 // Returns true if the predicted position for the robot is going to be past the
 // boundary (out of bounds)
 int predict_oob(struct RoboAI *ai, struct blob *blobs);
+int should_defend(struct RoboAI *ai);
 
 /* Robot actions */
 // Rotate robot towards the direction given by the angle in radians (+ CCW, - CW)

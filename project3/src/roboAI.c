@@ -823,47 +823,91 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
   if (ai->st.state == 1)
   {
     fprintf(stderr, "[001] rotate towards ball\n");
+    if (should_defend(ai))
+    {
+      ai->st.state = 50;
+    }
   }
   else if (ai->st.state == 2)
   {
     fprintf(stderr, "[002] move towards ball\n");
+    if (should_defend(ai))
+    {
+      ai->st.state = 50;
+    }
   }
   else if (ai->st.state == 3)
   {
     fprintf(stderr, "[003] aim pincers at ball\n");
+    if (should_defend(ai))
+    {
+      ai->st.state = 50;
+    }
   }
   else if (ai->st.state == 4)
   {
     fprintf(stderr, "[004] position ball in pincers\n");
+    if (should_defend(ai))
+    {
+      ai->st.state = 50;
+    }
   }
   else if (ai->st.state == 5)
   {
     fprintf(stderr, "[005] aim ball at goal\n");
+    if (should_defend(ai))
+    {
+      ai->st.state = 50;
+    }
   }
   else if (ai->st.state == 6)
   {
     fprintf(stderr, "[006] kick\n");
+    if (should_defend(ai))
+    {
+      ai->st.state = 50;
+    }
   }
   else if (ai->st.state == 7)
   {
     fprintf(stderr, "[007] back away from defender\n");
+    if (should_defend(ai))
+    {
+      ai->st.state = 50;
+    }
   }
   else if (ai->st.state == 8)
   {
     fprintf(stderr, "[008] scored\n");
+    if (should_defend(ai))
+    {
+      ai->st.state = 50;
+    }
   }
   // DEFENSE...
   else if (ai->st.state == 50)
   {
     fprintf(stderr, "[050] return to own side\n");
+    if (!should_defend(ai))
+    {
+      ai->st.state = 1;
+    }
   }
   else if (ai->st.state == 51)
   {
     fprintf(stderr, "[051] position for defense\n");
+    if (!should_defend(ai))
+    {
+      ai->st.state = 1;
+    }
   }
   else if (ai->st.state == 52)
   {
     fprintf(stderr, "[052] block path of ball\n");
+    if (!should_defend(ai))
+    {
+      ai->st.state = 1;
+    }
   }
   // MOVE AWAY FROM OBSTACLES...
   else if (ai->st.state == 90)
@@ -1381,6 +1425,12 @@ int predict_oob(struct RoboAI *ai, struct blob *blobs)
   double x, y;
   predict_self_xy(ai, blobs, &x, &y);
   return x < 0 || x > sx || y < 0 || y > sy;
+}
+
+// TODO IMPLEMENT
+int should_defend(struct RoboAI *ai)
+{
+  return 1;
 }
 
 // TODO REMOVE
