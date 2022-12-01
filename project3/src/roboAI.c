@@ -823,19 +823,63 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
   if (ai->st.state == 1)
   {
     fprintf(stderr, "[001] rotate towards ball\n");
+    // Rotate towards ball
+    // TODO recdeclare when moving this funcrtion out of AI_main
+    // double face_ball_dx, face_ball_dy;
+    predict_ball_xy(ai, blobs, &bx, &by);
+    predict_self_xy(ai, blobs, &selfx, &selfy);
+    face_ball_dx = bx - selfx;
+    face_ball_dy = by - selfy;
+    double ang = signed_rotation(ai->st.sdx, ai->st.sdy, face_ball_dx, face_ball_dy);
+    ai->DPhead = clearDP(ai->DPhead);
+    ai->DPhead = addVector(ai->DPhead, selfx, selfy, ai->st.sdx, ai->st.sdy, 100, 0, 255.0, 0);
+    // TODO consider moving actions to else clause
+    rotate(ai, blobs, ang, 30.0);
+    fprintf(stderr, "raw [%f, %f], correct [%f, %f]\n", ai->st.sdx, ai->st.sdy, ai->st.sdx, ai->st.sdy);
+    fprintf(stderr, "goal atan2 heading: %f, robot: %f\n", atan2(face_ball_dx, face_ball_dy) * 180.0 / PI, atan2(ai->st.sdx, ai->st.sdy) * 180.0 / PI);
+
     if (should_defend(ai))
     {
       ai->st.state = 50;
+    }
+    // Facing the ball, within a tolerance
+    else if (fabs(ang) <= ANG_ROTATE_TOWARDS)
+    {
+      BT_all_stop(1);
+      ai->st.state = 2;
     }
   }
   else if (ai->st.state == 2)
   {
-    fprintf(stderr, "[002] move towards ball\n");
+    ai->DPhead = clearDP(ai->DPhead);
+    predict_ball_xy(ai, blobs, &bx, &by);
+    predict_self_xy(ai, blobs, &selfx, &selfy);
+    move_to_target(ai, blobs, bx, by, selfx, selfy, 100);
+    // TODO state transition
+    double old_dist = dist(old_scx, old_scy, bx, by);
+    double curr_dist = dist(selfx, selfy, bx, by);
+    fprintf(stderr, "[002] move towards ball    Current dist from ball:%f    Old dist:%f\n", curr_dist, old_dist);
+
     if (should_defend(ai))
     {
       ai->st.state = 50;
     }
+    // when close to ball; note should account for distance from center of
+    // uniform to the actual pincers
+    // NOTE: since move to target seems to be working well, skip the slower
+    // rotation adjustment to see how it works. right now the slower rotation adjustment
+    // over rotates
+    else if (curr_dist <= 200.0)
+    {
+      ai->st.state = 4;   // for now, skip aim pincers go to position ball in pincers
+    }
+    // if we predict the robot will move past a boundary, move away from it
+    else if (predict_oob(ai, blobs))
+    {
+      ai->st.state = 90;
+    }
   }
+  // TODO remove if not using! and update fsm
   else if (ai->st.state == 3)
   {
     fprintf(stderr, "[003] aim pincers at ball\n");
@@ -846,39 +890,106 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
   }
   else if (ai->st.state == 4)
   {
-    fprintf(stderr, "[004] position ball in pincers\n");
+    ai->DPhead = clearDP(ai->DPhead);
+    predict_ball_xy(ai, blobs, &bx, &by);
+    predict_self_xy(ai, blobs, &selfx, &selfy);
+    move_to_target(ai, blobs, bx, by, selfx, selfy, 30);
+    double old_dist = dist(old_scx, old_scy, bx, by);
+    double curr_dist = dist(selfx, selfy, bx, by);
+    fprintf(stderr, "[004] positioning ball in pincers    Current dist from ball:%f    Old dist:%f\n", curr_dist, old_dist);
+    
     if (should_defend(ai))
     {
       ai->st.state = 50;
+    }
+    // TODO consider how to wrestle for the ball at this point; right now defense
+    // is prioritized
+    // Ball is within range
+    else if (ball_in_pincers(ai, blobs))
+    {
+      // if moving slowly, robot stops when ball is just outside pincers so
+      // let it keep driving forward
+      // BT_all_stop(1);
+      ai->st.state = 5;
+    }
+    // if we predict the robot will move past a boundary, move away from it
+    else if (predict_oob(ai, blobs))
+    {
+      ai->st.state = 90;
+    }
+    // TODO factor in distance from center of rectangle to pincers
+    // if robot moved far away from the ball, retry
+    else if (curr_dist > 200.0)
+    {
+      ai->st.state = 1;
     }
   }
   else if (ai->st.state == 5)
   {
     fprintf(stderr, "[005] aim ball at goal\n");
+    double face_goal_dx, face_goal_dy, ang;
+    double goal_x, goal_y;
+    predict_ball_xy(ai, blobs, &bx, &by);
+    predict_self_xy(ai, blobs, &selfx, &selfy);
+    goal_x = sx * (1.0 - ai->st.side);
+    goal_y = sy / 2.0;
+    face_goal_dx = goal_x - selfx;
+    face_goal_dy = goal_y - selfy;
+    ai->DPhead = clearDP(ai->DPhead);
+    // plot the goal position (red cross)
+    // plot the path to the goal (magenta line)
+    ai->DPhead = addCross(ai->DPhead, goal_x, goal_y, 75, 255, 0, 0);
+    ai->DPhead = addLine(ai->DPhead, goal_x, goal_y, selfx, selfy, 255, 0, 255);
+    ang = signed_rotation(ai->st.sdx, ai->st.sdy, face_goal_dx, face_goal_dy);
+    
     if (should_defend(ai))
     {
       ai->st.state = 50;
     }
+    // if ball fell out of pincers, get it back
+    else if (ball_in_pincers(ai, blobs) == 0)
+    {
+      // TODO stop rotation?
+      // skipping aim pincers since it seems to over rotate atm
+      ai->st.state = 4;
+    }
+    // if ball is too far
+    else if (dist(bx, by, selfx, selfy) > 300.0)
+    {
+      // TODO stop rotation?
+      ai->st.state = 1;
+    }
+    // if we're facing the goal (and ball in pincers), kick
+    else if (fabs(ang) <= ANG_GOAL)
+    {
+      BT_all_stop(1);
+      ai->st.state = 6;
+    }
+    else
+    {
+      // TODO try moving forward and turning instead of rotating in place so
+      // the ball hopefully stays inside the pincers
+      rotate(ai, blobs, ang, 10.0);
+      fprintf(stderr, "goal atan2 heading: %f, robot: %f\n", atan2(face_goal_dx, face_goal_dy) * 180.0 / PI, atan2(ai->st.sdx, ai->st.sdy) * 180.0 / PI);
+    }
   }
+  // kick and go back to start. the people controlling the bot will decide when
+  // to manually end
   else if (ai->st.state == 6)
   {
     fprintf(stderr, "[006] kick\n");
-    if (should_defend(ai))
+    kick(ai, blobs);
+    // if the ball moved, we probably kicked it, or the enemy took it
+    if (ball_in_pincers(ai, blobs) == 0)
     {
-      ai->st.state = 50;
+      // back to start
+      ai->st.state = 1;
     }
   }
+  // TODO
   else if (ai->st.state == 7)
   {
     fprintf(stderr, "[007] back away from defender\n");
-    if (should_defend(ai))
-    {
-      ai->st.state = 50;
-    }
-  }
-  else if (ai->st.state == 8)
-  {
-    fprintf(stderr, "[008] scored\n");
     if (should_defend(ai))
     {
       ai->st.state = 50;
@@ -910,13 +1021,29 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
     }
   }
   // MOVE AWAY FROM OBSTACLES...
+  // TODO IMPLEMENT; right now it skips to driving backwards from the boundaries
   else if (ai->st.state == 90)
   {
     fprintf(stderr, "[090] halt movement\n");
+    ai->st.state = 91;
   }
+  // TODO implement for other obstacles; only boundaries at the moment
   else if (ai->st.state == 91)
   {
-    fprintf(stderr, "[091] move away from obstacles\n"); 
+    fprintf(stderr, "[091] move away from obstacles\n");
+    int dist = 100;
+    predict_self_xy(ai, blobs, &selfx, &selfy);
+    // at least dist away from every boundary then we're good
+    if (selfx >= dist && selfx <= (sx - dist) && selfy >= dist && selfy <= (sy - dist))
+    {
+      // restart
+      ai->st.state = 1;
+    }
+    else
+    {
+      // still too close to boundary so drive away from it
+      BT_drive(LEFT_MOTOR, RIGHT_MOTOR, -50);
+    }
   }
   // PENALTY KICK...
   else if (ai->st.state == 101)
@@ -952,14 +1079,6 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
     double old_dist = dist(old_scx, old_scy, bx, by);
     double curr_dist = dist(selfx, selfy, bx, by);
     fprintf(stderr, "[102] move towards ball    Current dist from ball:%f    Old dist:%f\n", curr_dist, old_dist);
-
-    // // Not facing ball / moved away from the ball
-    // else if (fabs(curr_dist - dist(old_scx, old_scy, bx, by)) > 50.0)
-    // {
-    //   fprintf(stderr, "[102] Not facing ball. Going back to 101\n");
-    //   BT_all_stop(1);
-    //   ai->st.state = 101;
-    // }
 
     // when close to ball; note should account for distance from center of
     // uniform to the actual pincers
