@@ -787,7 +787,7 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
   double old_scx = ai->st.old_scx;
   double old_scy = ai->st.old_scy;
   // TODO remove when refactoring the state functions out
-  double face_ball_dx, face_ball_dy, bx, by;
+  double face_ball_dx, face_ball_dy, bx, by, selfx, selfy, oppx, oppy;
   // Save the previous heading for correction purposes
   ai->st.old_sdx = ai->st.sdx;
   ai->st.old_sdy = ai->st.sdy;
@@ -822,13 +822,13 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
     // Rotate towards ball
     // TODO recdeclare when moving this funcrtion out of AI_main
     // double face_ball_dx, face_ball_dy;
-    get_ball_xy(ai, blobs, &bx, &by);
-    // TODO SELF NULL CHECK
-    face_ball_dx = bx - ai->st.self->cx;
-    face_ball_dy = by - ai->st.self->cy;
+    predict_ball_xy(ai, blobs, &bx, &by);
+    predict_self_xy(ai, blobs, &selfx, &selfy);
+    face_ball_dx = bx - selfx;
+    face_ball_dy = by - selfy;
     double ang = signed_rotation(ai->st.sdx, ai->st.sdy, face_ball_dx, face_ball_dy);
     ai->DPhead = clearDP(ai->DPhead);
-    ai->DPhead = addVector(ai->DPhead, ai->st.self->cx, ai->st.self->cy, ai->st.sdx, ai->st.sdy, 100, 0, 255.0, 0);
+    ai->DPhead = addVector(ai->DPhead, selfx, selfy, ai->st.sdx, ai->st.sdy, 100, 0, 255.0, 0);
     rotate(ai, blobs, ang, 30.0);
     fprintf(stderr, "raw [%f, %f], correct [%f, %f]\n", ai->st.sdx, ai->st.sdy, ai->st.sdx, ai->st.sdy);
     fprintf(stderr, "goal atan2 heading: %f, robot: %f\n", atan2(face_ball_dx, face_ball_dy) * 180.0 / PI, atan2(ai->st.sdx, ai->st.sdy) * 180.0 / PI);
@@ -845,12 +845,12 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
   else if (ai->st.state == 102)
   {
     ai->DPhead = clearDP(ai->DPhead);
-    get_ball_xy(ai, blobs, &bx, &by);
-    move_to_target(ai, blobs, bx, by, 100);
+    predict_ball_xy(ai, blobs, &bx, &by);
+    predict_self_xy(ai, blobs, &selfx, &selfy);
+    move_to_target(ai, blobs, bx, by, selfx, selfy, 100);
     // TODO state transition
     double old_dist = dist(old_scx, old_scy, bx, by);
-    // TODO self NULL check
-    double curr_dist = dist(ai->st.self->cx, ai->st.self->cy, bx, by);
+    double curr_dist = dist(selfx, selfy, bx, by);
     fprintf(stderr, "[102] move towards ball    Current dist from ball:%f    Old dist:%f\n", curr_dist, old_dist);
     // OLD boundary logic
     // if (ai->st.self->cx < 100.0 || ai->st.self->cy < 100.0 || ai->st.self->cx > (sx - 100.0) || ai->st.self->cy > (sy - 100.0))
@@ -890,7 +890,7 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
     // TODO redeclare when separating this out from AI_main. right now
     // we are redeclaring variables!
     // double correct_dx, correct_dy, face_ball_dx, face_ball_dy;
-    get_ball_xy(ai, blobs, &bx, &by);
+    predict_ball_xy(ai, blobs, &bx, &by);
     // TODO SELF NULL CHECK
     face_ball_dx = bx - ai->st.self->cx;
     face_ball_dy = by - ai->st.self->cy;
@@ -918,11 +918,11 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
   else if (ai->st.state == 104)
   {
     ai->DPhead = clearDP(ai->DPhead);
-    get_ball_xy(ai, blobs, &bx, &by);
-    move_to_target(ai, blobs, bx, by, 30);
+    predict_ball_xy(ai, blobs, &bx, &by);
+    predict_self_xy(ai, blobs, &selfx, &selfy);
+    move_to_target(ai, blobs, bx, by, selfx, selfy, 30);
     double old_dist = dist(old_scx, old_scy, bx, by);
-    // TODO SELF NULL CHECK
-    double curr_dist = dist(ai->st.self->cx, ai->st.self->cy, bx, by);
+    double curr_dist = dist(selfx, selfy, bx, by);
     fprintf(stderr, "[104] positioning ball in pincers    Current dist from ball:%f    Old dist:%f\n", curr_dist, old_dist);
     // Ball is within range
     if (ball_in_pincers(ai, blobs))
@@ -945,17 +945,17 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
     fprintf(stderr, "[105] aiming ball at goal\n");
     double face_goal_dx, face_goal_dy, ang;
     double goal_x, goal_y;
-    get_ball_xy(ai, blobs, &bx, &by);
-    // TODO SELF NULL CHECK
+    predict_ball_xy(ai, blobs, &bx, &by);
+    predict_self_xy(ai, blobs, &selfx, &selfy);
     goal_x = sx * (1.0 - ai->st.side);
     goal_y = sy / 2.0;
-    face_goal_dx = goal_x - ai->st.self->cx;
-    face_goal_dy = goal_y - ai->st.self->cy;
+    face_goal_dx = goal_x - selfx;
+    face_goal_dy = goal_y - selfy;
     ai->DPhead = clearDP(ai->DPhead);
     // plot the goal position (red cross)
     // plot the path to the goal (magenta line)
     ai->DPhead = addCross(ai->DPhead, goal_x, goal_y, 75, 255, 0, 0);
-    ai->DPhead = addLine(ai->DPhead, goal_x, goal_y, ai->st.self->cx, ai->st.self->cy, 255, 0, 255);
+    ai->DPhead = addLine(ai->DPhead, goal_x, goal_y, selfx, selfy, 255, 0, 255);
     ang = signed_rotation(ai->st.sdx, ai->st.sdy, face_goal_dx, face_goal_dy);
     // if ball fell out of pincers, get it back
     if (ball_in_pincers(ai, blobs) == 0)
@@ -965,7 +965,7 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
       ai->st.state = 104;
     }
     // if ball is too far
-    else if (dist(bx, by, ai->st.self->cx, ai->st.self->cy) > 300.0)
+    else if (dist(bx, by, selfx, selfy) > 300.0)
     {
       // TODO stop rotation?
       ai->st.state = 101;
@@ -1007,7 +1007,7 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
     // Rotate towards ball
     // TODO recdeclare when moving this funcrtion out of AI_main
     // double correct_dx, correct_dy, face_ball_dx, face_ball_dy;
-    get_ball_xy(ai, blobs, &bx, &by);
+    predict_ball_xy(ai, blobs, &bx, &by);
     face_ball_dx = bx - ai->st.self->cx;
     face_ball_dy = by - ai->st.self->cy;
     double ang = signed_rotation(ai->st.sdx, ai->st.sdy, face_ball_dx, face_ball_dy);
@@ -1029,8 +1029,9 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
   else if (ai->st.state == 202)
   {
     ai->DPhead = clearDP(ai->DPhead);
-    get_ball_xy(ai, blobs, &bx, &by);
-    move_to_target(ai, blobs, bx, by, 100);
+    predict_ball_xy(ai, blobs, &bx, &by);
+    predict_self_xy(ai, blobs, &selfx, &selfy);
+    move_to_target(ai, blobs, bx, by, selfx, selfy, 100);
     // TODO state transition
     double old_dist = dist(old_scx, old_scy, bx, by);
     double curr_dist = dist(ai->st.self->cx, ai->st.self->cy, bx, by);
@@ -1066,7 +1067,7 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
     // TODO redeclare when separating this out from AI_main. right now
     // we are redeclaring variables!
     // double correct_dx, correct_dy, face_ball_dx, face_ball_dy;
-    get_ball_xy(ai, blobs, &bx, &by);
+    predict_ball_xy(ai, blobs, &bx, &by);
     face_ball_dx = bx - ai->st.self->cx;
     face_ball_dy = by - ai->st.self->cy;
     ai->DPhead = clearDP(ai->DPhead);
@@ -1090,8 +1091,9 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
   else if (ai->st.state == 204)
   {
     ai->DPhead = clearDP(ai->DPhead);
-    get_ball_xy(ai, blobs, &bx, &by);
-    move_to_target(ai, blobs, bx, by, 30);
+    predict_ball_xy(ai, blobs, &bx, &by);
+    predict_self_xy(ai, blobs, &selfx, &selfy);
+    move_to_target(ai, blobs, bx, by, selfx, selfy, 30);
     // TODO state transition
     double old_dist = dist(old_scx, old_scy, bx, by);
     double curr_dist = dist(ai->st.self->cx, ai->st.self->cy, bx, by);
@@ -1173,26 +1175,107 @@ void get_self_xy(struct RoboAI *ai, struct blob *blobs, double *x, double *y)
 
 void predict_ball_xy(struct RoboAI *ai, struct blob *blobs, double *x, double *y)
 {
+  // 4 cases:
+  //  null vs valid blob -> null case add velocity to old pos to get current pos
+  //  negligible vs valid velocity vector -> if magnitude of velocity negligible, dont add velocity
+
+  // If camera loses sight of ball
   if (ai->st.ball == NULL)
   {
-    (*x) = ai->st.old_bcx + 2*ai->st.bvx;
-    (*y) = ai->st.old_bcy + 2*ai->st.bvy;
-    return;
+    // Use old ball position as starting point
+    (*x) = ai->st.old_bcx;
+    (*y) = ai->st.old_bcy;
+
+    // Set ball variables to a prediction of their current position if it was moving
+    if (ai->st.bmx != 0 && ai->st.bmy != 0)
+    {
+      (*x) += ai->st.bvx;
+      (*y) += ai->st.bvy;
+    }
   }
-  (*x) = ai->st.ball->cx + ai->st.bvx;
-  (*y) = ai->st.ball->cy + ai->st.bvy;
+  else 
+  {
+    // Set ball variables to current position
+    (*x) = ai->st.ball->cx;
+    (*y) = ai->st.ball->cy;
+  }
+
+  // Now add velocity if relevant to predict future position
+  if (ai->st.bmx != 0 && ai->st.bmy != 0)
+  {
+    (*x) += ai->st.bvx;
+    (*y) += ai->st.bvy;
+  }
 }
 
 void predict_self_xy(struct RoboAI *ai, struct blob *blobs, double *x, double *y)
 {
+  // 4 cases:
+  //  null vs valid blob -> null case add velocity to old pos to get current pos
+  //  negligible vs valid velocity vector -> if magnitude of velocity negligible, dont add velocity
+
+  // If camera loses sight of self
   if (ai->st.self == NULL)
   {
-    (*x) = ai->st.old_scx + 2*ai->st.svx;
-    (*y) = ai->st.old_scy + 2*ai->st.svy;
-    return;
+    // Use old self position as starting point
+    (*x) = ai->st.old_scx;
+    (*y) = ai->st.old_scy;
+
+    // Set self variables to a prediction of their current position if it was moving
+    if (ai->st.smx != 0 && ai->st.smy != 0)
+    {
+      (*x) += ai->st.svx;
+      (*y) += ai->st.svy;
+    }
   }
-  (*x) = ai->st.self->cx + ai->st.svx;
-  (*y) = ai->st.self->cy + ai->st.svy;
+  else 
+  {
+    // Set self variables to current position
+    (*x) = ai->st.self->cx;
+    (*y) = ai->st.self->cy;
+  }
+
+  // Now add velocity if relevant to predict future position
+  if (ai->st.smx != 0 && ai->st.smy != 0)
+  {
+    (*x) += ai->st.svx;
+    (*y) += ai->st.svy;
+  }
+}
+
+void predict_opponent_xy(struct RoboAI *ai, struct blob *blobs, double *x, double *y)
+{
+  // 4 cases:
+  //  null vs valid blob -> null case add velocity to old pos to get current pos
+  //  negligible vs valid velocity vector -> if magnitude of velocity negligible, dont add velocity
+
+  // If camera loses sight of opponent
+  if (ai->st.opp == NULL)
+  {
+    // Use old opponent position as starting point
+    (*x) = ai->st.old_ocx;
+    (*y) = ai->st.old_ocy;
+
+    // Set ball variables to a prediction of their current position if it was moving
+    if (ai->st.omx != 0 && ai->st.omy != 0)
+    {
+      (*x) += ai->st.ovx;
+      (*y) += ai->st.ovy;
+    }
+  }
+  else 
+  {
+    // Set ball variables to current position
+    (*x) = ai->st.opp->cx;
+    (*y) = ai->st.opp->cy;
+  }
+
+  // Now add velocity if relevant to predict future position
+  if (ai->st.omx != 0 && ai->st.omy != 0)
+  {
+    (*x) += ai->st.ovx;
+    (*y) += ai->st.ovy;
+  }
 }
 
 double dist(double x1, double y1, double x2, double y2)
@@ -1252,50 +1335,11 @@ void rotate(struct RoboAI *ai, struct blob *blobs, double direction, double powe
   }
 }
 
-void temp_rotate(struct RoboAI *ai, struct blob *blobs, char power)
-{
-  double goal_x = sx * (1.0 - ai->st.side);
-  double goal_y = sy / 2.0;
-  if (ai->st.self->cx > goal_x)
-  {
-    if (ai->st.self->cy < goal_y)
-    {
-      BT_turn(LEFT_MOTOR, power, RIGHT_MOTOR, -power);
-    } else
-    {
-      BT_turn(LEFT_MOTOR, -power, RIGHT_MOTOR, power);
-    }
-  }
-  else
-  {
-    if (ai->st.self->cy < goal_y)
-    {
-      BT_turn(LEFT_MOTOR, -power, RIGHT_MOTOR, power);
-    } else
-    {
-      BT_turn(LEFT_MOTOR, power, RIGHT_MOTOR, -power);
-    }
-  }
-}
-
-void move_to_ball(struct RoboAI *ai, struct blob *blobs)
-{
-  // determine distance from balll
-  // further distance is more power
-  double bx, by;
-  get_ball_xy(ai, blobs, &bx, &by);
-  double curr_dist = dist(ai->st.self->cx, ai->st.self->cy, bx, by);
-  double power = curr_dist/(sqrt(sx^2 + sy^2));
-  BT_turn(LEFT_MOTOR, power, RIGHT_MOTOR, power);
- 
-  
-}
-
-void move_to_target(struct RoboAI *ai, struct blob *blobs, double tx, double ty, double max_power)
+void move_to_target(struct RoboAI *ai, struct blob *blobs, double tx, double ty, double selfx, double selfy, double max_power)
 {
   double path_x, path_y, e, de, ie;
-  path_x = tx - ai->st.self->cx;
-  path_y = ty - ai->st.self->cy;
+  path_x = tx - selfx;
+  path_y = ty - selfy;
   e = signed_rotation(ai->st.smx, ai->st.smy, path_x, path_y);
   // int iter = 0;
   // ie = 0;

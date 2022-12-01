@@ -166,6 +166,7 @@ void get_ball_xy(struct RoboAI *ai, struct blob *blobs, double *x, double *y);
 void get_self_xy(struct RoboAI *ai, struct blob *blobs, double *x, double *y);
 void predict_ball_xy(struct RoboAI *ai, struct blob *blobs, double *x, double *y);
 void predict_self_xy(struct RoboAI *ai, struct blob *blobs, double *x, double *y);
+void predict_opponent_xy(struct RoboAI *ai, struct blob *blobs, double *x, double *y);
 // void predict_enemy_xy();
 /* Utility functions */
 double dist(double x1, double y1, double x2, double y2);
@@ -177,11 +178,7 @@ double signed_rotation(double sx, double sy, double tx, double ty);
 // note angle relative to down so its reverse of what you think.
 // power must be > 0
 void rotate(struct RoboAI *ai, struct blob *blobs, double direction, double power);
-// GOAL SPECIFIC ROTATION; TODO MAKE MORE GENERAL
-void temp_rotate(struct RoboAI *ai, struct blob *blobs, char power);
-// Assuming the robot is facing the ball, drive straight towards ball
-void move_to_ball(struct RoboAI *ai, struct blob *blobs);
-void move_to_target(struct RoboAI *ai, struct blob *blobs, double tx, double ty, double max_power);
+void move_to_target(struct RoboAI *ai, struct blob *blobs, double tx, double ty, double selfx, double selfy, double max_power);
 int ball_in_pincers(struct RoboAI *ai, struct blob *blobs);
 void kick(struct RoboAI *ai, struct blob *blobs);
 #endif
