@@ -971,9 +971,8 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
     ai->DPhead = clearDP(ai->DPhead);
     // plot the goal position (red cross)
     // plot the path to the goal (magenta line)
-    // plot 1 unit away from 0 or sx so it shows up on the UI?
-    addCross(ai->DPhead, goal_x < 0.1 ? 1 : sx - 1, sy / 2.0, 75, 255, 0, 0);
-    addLine(ai->DPhead, goal_x < 0.1 ? 1 : sx - 1, sy / 2.0, ai->st.self->cx, ai->st.self->cy, 255, 0, 255);
+    ai->DPhead = addCross(ai->DPhead, goal_x, goal_y, 75, 255, 0, 0);
+    ai->DPhead = addLine(ai->DPhead, goal_x, goal_y, ai->st.self->cx, ai->st.self->cy, 255, 0, 255);
     //left = is_left(ai, left, GENERAL);
     // correct heading
     correct_dx = ai->st.sdx;
