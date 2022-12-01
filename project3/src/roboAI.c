@@ -817,8 +817,65 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
   // fprintf(stderr, "");
   // TODO REMOVE. THIS JUST FORCES US INTO 1 CONDITIONAL FOR TESTING
   // ai->st.state = 401; // impossible state so we can move bot manually and print the heading correction
-
-  if (ai->st.state == 101)
+  
+  // SOCCER...
+  // OFFENSE...
+  if (ai->st.state == 1)
+  {
+    fprintf(stderr, "[001] rotate towards ball\n");
+  }
+  else if (ai->st.state == 2)
+  {
+    fprintf(stderr, "[002] move towards ball\n");
+  }
+  else if (ai->st.state == 3)
+  {
+    fprintf(stderr, "[003] aim pincers at ball\n");
+  }
+  else if (ai->st.state == 4)
+  {
+    fprintf(stderr, "[004] position ball in pincers\n");
+  }
+  else if (ai->st.state == 5)
+  {
+    fprintf(stderr, "[005] aim ball at goal\n");
+  }
+  else if (ai->st.state == 6)
+  {
+    fprintf(stderr, "[006] kick\n");
+  }
+  else if (ai->st.state == 7)
+  {
+    fprintf(stderr, "[007] back away from defender\n");
+  }
+  else if (ai->st.state == 8)
+  {
+    fprintf(stderr, "[008] scored\n");
+  }
+  // DEFENSE...
+  else if (ai->st.state == 50)
+  {
+    fprintf(stderr, "[050] return to own side\n");
+  }
+  else if (ai->st.state == 51)
+  {
+    fprintf(stderr, "[051] position for defense\n");
+  }
+  else if (ai->st.state == 52)
+  {
+    fprintf(stderr, "[052] block path of ball\n");
+  }
+  // MOVE AWAY FROM OBSTACLES...
+  else if (ai->st.state == 90)
+  {
+    fprintf(stderr, "[090] halt movement\n");
+  }
+  else if (ai->st.state == 91)
+  {
+    fprintf(stderr, "[091] move away from obstacles\n"); 
+  }
+  // PENALTY KICK...
+  else if (ai->st.state == 101)
   {
     fprintf(stderr, "[101] rotate towards ball\n");
     // Rotate towards ball
@@ -1031,8 +1088,8 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
       BT_drive(LEFT_MOTOR, RIGHT_MOTOR, -50);
     }
   }
-
-  if (ai->st.state == 201)
+  // CHASE THE BALL...
+  else if (ai->st.state == 201)
   {
     fprintf(stderr, "[201] rotate towards ball\n");
     // Rotate towards ball
