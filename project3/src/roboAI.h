@@ -172,6 +172,9 @@ void predict_opponent_xy(struct RoboAI *ai, struct blob *blobs, double *x, doubl
 double dist(double x1, double y1, double x2, double y2);
 // Returns the shortest angle (signed) from [sx, sy] to [tx, ty]
 double signed_rotation(double sx, double sy, double tx, double ty);
+// Returns true if the predicted position for the robot is going to be past the
+// boundary (out of bounds)
+int predict_oob(struct RoboAI *ai, struct blob *blobs);
 
 /* Robot actions */
 // Rotate robot towards the direction given by the angle in radians (+ CCW, - CW)

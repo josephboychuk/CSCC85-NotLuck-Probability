@@ -29,12 +29,14 @@
 ***************************************************************************/
 
 #include "roboAI.h"			// <--- Look at this header file!
+// minimum rotation power for rotating towards goal
+#define ROTATE_MIN_POWER 10.0
 // Goal angle threshold
-#define ANG_ROTATE_TOWARDS 0.14
+#define ANG_ROTATE_TOWARDS 0.21
 #define ANG_PINCERS 0.07
-#define ANG_GOAL 0.14 // 8 degrees
+#define ANG_GOAL 0.3 // about 12 ish
 // PID controller constants
-#define K1 10
+#define K1 50
 #define K2 1
 #define K3 1
 // Controls how fast to drive forward during move_to_target
@@ -870,14 +872,20 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
     //   BT_all_stop(1);
     //   ai->st.state = 101;
     // }
+
     // when close to ball; note should account for distance from center of
     // uniform to the actual pincers
     // NOTE: since move to target seems to be working well, skip the slower
     // rotation adjustment to see how it works. right now the slower rotation adjustment
     // over rotates
-    if (curr_dist <= 250.0)
+    if (curr_dist <= 200.0)
     {
       ai->st.state = 104;   // for now, skip aim pincers go to position ball in pincers
+    }
+    // if we predict the robot will move past a boundary, move away from it
+    else if (predict_oob(ai, blobs))
+    {
+      ai->st.state = 190;
     }
   }
   // TODO: re-enable transition to this in state 102 if needed. otherwise remove
@@ -932,9 +940,14 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
       // BT_all_stop(1);
       ai->st.state = 105;
     }
+    // if we predict the robot will move past a boundary, move away from it
+    else if (predict_oob(ai, blobs))
+    {
+      ai->st.state = 190;
+    }
     // TODO factor in distance from center of rectangle to pincers
     // if robot moved far away from the ball, retry
-    else if (curr_dist > 300.0)
+    else if (curr_dist > 200.0)
     {
       ai->st.state = 101;
     }
@@ -980,7 +993,7 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
     {
       // TODO try moving forward and turning instead of rotating in place so
       // the ball hopefully stays inside the pincers
-      rotate(ai, blobs, ang, 15.0);
+      rotate(ai, blobs, ang, 10.0);
       fprintf(stderr, "goal atan2 heading: %f, robot: %f\n", atan2(face_goal_dx, face_goal_dy) * 180.0 / PI, atan2(ai->st.sdx, ai->st.sdy) * 180.0 / PI);
     }
   }
@@ -999,6 +1012,24 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
   {
     BT_all_stop(0);
     fprintf(stderr, "[108] Done\n");
+  }
+  // move away from the boundary until we are x distance away from all of them
+  else if (ai->st.state == 190)
+  {
+    fprintf(stderr, "[190] moving away from boundary\n");
+    int dist = 100;
+    predict_self_xy(ai, blobs, &selfx, &selfy);
+    // at least dist away from every boundary then we're good
+    if (selfx >= dist && selfx <= (sx - dist) && selfy >= dist && selfy <= (sy - dist))
+    {
+      // restart
+      ai->st.state = 101;
+    }
+    else
+    {
+      // still too close to boundary so drive away from it
+      BT_drive(LEFT_MOTOR, RIGHT_MOTOR, -50);
+    }
   }
 
   if (ai->st.state == 201)
@@ -1288,6 +1319,12 @@ double signed_rotation(double sx, double sy, double tx, double ty)
   return atan2(sx*ty-sy*tx, sx*tx+sy*ty);
 }
 
+int predict_oob(struct RoboAI *ai, struct blob *blobs)
+{
+  double x, y;
+  predict_self_xy(ai, blobs, &x, &y);
+  return x < 0 || x > sx || y < 0 || y > sy;
+}
 
 // TODO REMOVE
 // int is_left(struct RoboAI *ai, int prev_left, enum Motion motion)
@@ -1324,7 +1361,7 @@ double signed_rotation(double sx, double sy, double tx, double ty)
 
 void rotate(struct RoboAI *ai, struct blob *blobs, double direction, double power)
 {
-  double adj_power = fmin(fmax(power * fabs(direction), 10.0), 100.0);
+  double adj_power = fmin(fmax(power * fabs(direction), ROTATE_MIN_POWER), 100.0);
   if (direction > 0)
   {
     BT_turn(LEFT_MOTOR, -adj_power, RIGHT_MOTOR, adj_power);
@@ -1335,6 +1372,7 @@ void rotate(struct RoboAI *ai, struct blob *blobs, double direction, double powe
   }
 }
 
+// MAX_POWER is a magnitude and should always be positive
 void move_to_target(struct RoboAI *ai, struct blob *blobs, double tx, double ty, double selfx, double selfy, double max_power)
 {
   double path_x, path_y, e, de, ie;
@@ -1359,15 +1397,19 @@ void move_to_target(struct RoboAI *ai, struct blob *blobs, double tx, double ty,
   // Now u from our PID controller is found, use that to inform motion
   // C is power constant
   double map_diagonal  = dist(0, 0, sx, sy);
-  double power = fmin(fabs(C*100*dist(0, 0, path_x, path_y)/map_diagonal), max_power-fabs(u));
+  double power = fmin(fabs(C*100*dist(0, 0, path_x, path_y)/map_diagonal), max_power);
+  double high = fmin(fabs(u) + power, max_power);
+  double low = fmax(-fabs(u) + power, -max_power);
+
+
   fprintf(stderr, "move_to_target: u %f, power %f\n", u, power);
   if (u > 0)
   {
-    BT_turn(LEFT_MOTOR, power, RIGHT_MOTOR, power+u);
+    BT_turn(LEFT_MOTOR, low, RIGHT_MOTOR, high);
   }
   else
   {
-    BT_turn(LEFT_MOTOR, power-u, RIGHT_MOTOR, power);
+    BT_turn(LEFT_MOTOR, high, RIGHT_MOTOR, low);
   }
 
 }
