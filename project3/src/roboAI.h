@@ -183,7 +183,14 @@ double signed_block_distance(struct RoboAI *ai);
 // note angle relative to down so its reverse of what you think.
 // power must be > 0
 void rotate(struct RoboAI *ai, struct blob *blobs, double direction, double power);
-void move_to_target(struct RoboAI *ai, struct blob *blobs, double tx, double ty, double selfx, double selfy, double max_power);
+/* Moves to target location (tx, ty) on the playing field starting from
+ * (selfx, selfy) using a PD controller.
+ * `max_power`	the max magnitude of power (positive) to give to both motors
+ * `prev_err`	pointer to the previous error used in this controller. it should
+ * 				be set to 0 every time you start the controller. the controller
+ * 				will update this after each call
+ */
+void move_to_target(struct RoboAI *ai, struct blob *blobs, double tx, double ty, double selfx, double selfy, double max_power, double *prev_err);
 int ball_in_pincers(struct RoboAI *ai, struct blob *blobs);
 void kick(struct RoboAI *ai, struct blob *blobs);
 #endif
