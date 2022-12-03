@@ -830,8 +830,8 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
     // Rotate towards ball
     // TODO recdeclare when moving this funcrtion out of AI_main
     // double face_ball_dx, face_ball_dy;
-    predict_ball_xy(ai, blobs, &bx, &by);
-    predict_self_xy(ai, blobs, &selfx, &selfy);
+    predict_ball_xy(ai, &bx, &by);
+    predict_self_xy(ai, &selfx, &selfy);
     face_ball_dx = bx - selfx;
     face_ball_dy = by - selfy;
     double ang = signed_rotation(ai->st.sdx, ai->st.sdy, face_ball_dx, face_ball_dy);
@@ -856,8 +856,8 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
   else if (ai->st.state == 2)
   {
     ai->DPhead = clearDP(ai->DPhead);
-    predict_ball_xy(ai, blobs, &bx, &by);
-    predict_self_xy(ai, blobs, &selfx, &selfy);
+    predict_ball_xy(ai, &bx, &by);
+    predict_self_xy(ai, &selfx, &selfy);
     move_to_target(ai, blobs, bx, by, selfx, selfy, 100);
     // TODO state transition
     double old_dist = dist(old_scx, old_scy, bx, by);
@@ -895,8 +895,8 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
   else if (ai->st.state == 4)
   {
     ai->DPhead = clearDP(ai->DPhead);
-    predict_ball_xy(ai, blobs, &bx, &by);
-    predict_self_xy(ai, blobs, &selfx, &selfy);
+    predict_ball_xy(ai, &bx, &by);
+    predict_self_xy(ai, &selfx, &selfy);
     move_to_target(ai, blobs, bx, by, selfx, selfy, 30);
     double old_dist = dist(old_scx, old_scy, bx, by);
     double curr_dist = dist(selfx, selfy, bx, by);
@@ -933,8 +933,8 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
     fprintf(stderr, "[005] aim ball at goal\n");
     double face_goal_dx, face_goal_dy, ang;
     double goal_x, goal_y;
-    predict_ball_xy(ai, blobs, &bx, &by);
-    predict_self_xy(ai, blobs, &selfx, &selfy);
+    predict_ball_xy(ai, &bx, &by);
+    predict_self_xy(ai, &selfx, &selfy);
     goal_x = sx * (1.0 - ai->st.side);
     goal_y = sy / 2.0;
     face_goal_dx = goal_x - selfx;
@@ -1052,11 +1052,11 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
     }
     else if (signed_block_distance > 0)
     {
-      BT_drive(LEFT_MOTOR, RIGHT_MOTOR, -30);
+      BT_drive(LEFT_MOTOR, RIGHT_MOTOR, -5);
     }
     else
     {
-      BT_drive(LEFT_MOTOR, RIGHT_MOTOR, 30);
+      BT_drive(LEFT_MOTOR, RIGHT_MOTOR, 5);
     }
     
   }
@@ -1072,7 +1072,7 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
   {
     fprintf(stderr, "[091] move away from obstacles\n");
     int dist = 100;
-    predict_self_xy(ai, blobs, &selfx, &selfy);
+    predict_self_xy(ai, &selfx, &selfy);
     // at least dist away from every boundary then we're good
     if (selfx >= dist && selfx <= (sx - dist) && selfy >= dist && selfy <= (sy - dist))
     {
@@ -1286,8 +1286,8 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
     // Rotate towards ball
     // TODO recdeclare when moving this funcrtion out of AI_main
     // double face_ball_dx, face_ball_dy;
-    predict_ball_xy(ai, blobs, &bx, &by);
-    predict_self_xy(ai, blobs, &selfx, &selfy);
+    predict_ball_xy(ai, &bx, &by);
+    predict_self_xy(ai, &selfx, &selfy);
     face_ball_dx = bx - selfx;
     face_ball_dy = by - selfy;
     double ang = signed_rotation(ai->st.sdx, ai->st.sdy, face_ball_dx, face_ball_dy);
@@ -1338,7 +1338,7 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
     // TODO redeclare when separating this out from AI_main. right now
     // we are redeclaring variables!
     // double correct_dx, correct_dy, face_ball_dx, face_ball_dy;
-    predict_ball_xy(ai, blobs, &bx, &by);
+    predict_ball_xy(ai, &bx, &by);
     // TODO SELF NULL CHECK
     face_ball_dx = bx - ai->st.self->cx;
     face_ball_dy = by - ai->st.self->cy;
@@ -1408,7 +1408,7 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
   {
     fprintf(stderr, "[290] moving away from boundary\n");
     int dist = 100;
-    predict_self_xy(ai, blobs, &selfx, &selfy);
+    predict_self_xy(ai, &selfx, &selfy);
     // at least dist away from every boundary then we're good
     if (selfx >= dist && selfx <= (sx - dist) && selfy >= dist && selfy <= (sy - dist))
     {
