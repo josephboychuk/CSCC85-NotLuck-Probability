@@ -172,11 +172,13 @@ void predict_opponent_xy(struct RoboAI *ai, double *x, double *y);
 double dist(double x1, double y1, double x2, double y2);
 // Returns the shortest angle (signed) from [sx, sy] to [tx, ty]
 double signed_rotation(double sx, double sy, double tx, double ty);
+// Returns true if robot is going to drive into the enemy
+int predict_collision(struct RoboAI *ai);
 // Returns true if the predicted position for the robot is going to be past the
 // boundary (out of bounds)
 int predict_oob(struct RoboAI *ai, struct blob *blobs);
 int should_defend(struct RoboAI *ai);
-double defense_x_position(struct RoboAI *ai,  double oppx);
+void defense_position(int side, double bx, double by, double oppx, double oppy, double *tx, double *ty);
 double signed_block_distance(struct RoboAI *ai);
 /* Robot actions */
 // Rotate robot towards the direction given by the angle in radians (+ CCW, - CW)
