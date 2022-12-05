@@ -75,8 +75,7 @@ struct AI_data{
 
 	// Self track data. Done separately each frame
     struct blob *self;		       // Current self blob *NULL* if not visible/found
-	double old_scx, old_scy;	   // Previous self (cx,cy)x
-	double old_sdx, old_sdy;	   // Previous self [dx, dy] from the blob with modification
+	double old_scx, old_scy;	   // Previous self (cx,cy)
 	double svx,svy;			       // Current self [vx vy]
 	double smx,smy;			       // Self motion vector
 	double sdx,sdy;                // Self heading direction (from blob shape)
@@ -154,23 +153,21 @@ struct displayList *clearDP(struct displayList *head);
    Add headers for your own functions implementing the bot's soccer
    playing functionality below.
 *****************************************************************************/
-// TODO REMOVE
-void test(struct RoboAI *ai, struct blob *blobs);
-
-// TODO trim function arguments not being used
 /*
  * Utility functions to estimate state variables when blob is NULL.  
- * x, y are pointers to the variables to be updated
+ * x, y are pointers to the x and y components that will be updated
  */
 void get_ball_xy(struct RoboAI *ai, struct blob *blobs, double *x, double *y);
 void get_self_xy(struct RoboAI *ai, struct blob *blobs, double *x, double *y);
 void predict_ball_xy(struct RoboAI *ai, double *x, double *y);
 void predict_self_xy(struct RoboAI *ai, double *x, double *y);
 void predict_opponent_xy(struct RoboAI *ai, double *x, double *y);
-// void predict_enemy_xy();
-/* Utility functions */
+
+/* Utility functions for computing various quantities or conditions */
 double dist(double x1, double y1, double x2, double y2);
 // Returns the shortest angle (signed) from [sx, sy] to [tx, ty]
+// Note: due to ordering of x and y components, the angle is relative to down
+// with positive angle being CCW (right) of down
 double signed_rotation(double sx, double sy, double tx, double ty);
 // Returns true if robot is going to drive into the enemy
 int predict_collision(struct RoboAI *ai);
@@ -180,16 +177,19 @@ int predict_oob(struct RoboAI *ai, struct blob *blobs);
 int should_defend(struct RoboAI *ai);
 void defense_position(int side, double bx, double by, double oppx, double oppy, double *tx, double *ty);
 double signed_block_distance(struct RoboAI *ai);
+
 /* Robot actions */
-// Rotate robot towards the direction given by the angle in radians (+ CCW, - CW)
-// note angle relative to down so its reverse of what you think.
+// Rotate robot in place towards the direction given by the angle in radians (+ CCW, - CW)
+// The magnitude of direction influences how fast to rotate by.
+// Note: angle is relative to down so positive angle is the right (CCW) of down due
+// to the order of x and y used in the computation
 // power must be > 0
 void rotate(struct RoboAI *ai, struct blob *blobs, double direction, double power);
 /* Moves to target location (tx, ty) on the playing field starting from
  * (selfx, selfy) using a PD controller.
  * `max_power`	the max magnitude of power (positive) to give to both motors
  * `prev_err`	pointer to the previous error used in this controller. it should
- * 				be set to 0 every time you start the controller. the controller
+ * 				be set to 0 every time you start the controller. the function
  * 				will update this after each call
  */
 void move_to_target(struct RoboAI *ai, struct blob *blobs, double tx, double ty, double selfx, double selfy, double max_power, double *prev_err);
