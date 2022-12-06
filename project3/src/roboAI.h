@@ -157,8 +157,6 @@ struct displayList *clearDP(struct displayList *head);
  * Utility functions to estimate state variables when blob is NULL.  
  * x, y are pointers to the x and y components that will be updated
  */
-void get_ball_xy(struct RoboAI *ai, struct blob *blobs, double *x, double *y);
-void get_self_xy(struct RoboAI *ai, struct blob *blobs, double *x, double *y);
 void predict_ball_xy(struct RoboAI *ai, double *x, double *y);
 void predict_self_xy(struct RoboAI *ai, double *x, double *y);
 void predict_opponent_xy(struct RoboAI *ai, double *x, double *y);
@@ -173,10 +171,9 @@ double signed_rotation(double sx, double sy, double tx, double ty);
 int predict_collision(struct RoboAI *ai);
 // Returns true if the predicted position for the robot is going to be past the
 // boundary (out of bounds)
-int predict_oob(struct RoboAI *ai, struct blob *blobs);
+int predict_oob(struct RoboAI *ai);
 int should_defend(struct RoboAI *ai);
 void defense_position(int side, double bx, double by, double oppx, double oppy, double *tx, double *ty);
-double signed_block_distance(struct RoboAI *ai);
 
 /* Robot actions */
 // Rotate robot in place towards the direction given by the angle in radians (+ CCW, - CW)
@@ -184,7 +181,7 @@ double signed_block_distance(struct RoboAI *ai);
 // Note: angle is relative to down so positive angle is the right (CCW) of down due
 // to the order of x and y used in the computation
 // power must be > 0
-void rotate(struct RoboAI *ai, struct blob *blobs, double direction, double power);
+void rotate(struct RoboAI *ai, double direction, double power);
 /* Moves to target location (tx, ty) on the playing field starting from
  * (selfx, selfy) using a PD controller.
  * `max_power`	the max magnitude of power (positive) to give to both motors
@@ -192,7 +189,7 @@ void rotate(struct RoboAI *ai, struct blob *blobs, double direction, double powe
  * 				be set to 0 every time you start the controller. the function
  * 				will update this after each call
  */
-void move_to_target(struct RoboAI *ai, struct blob *blobs, double tx, double ty, double selfx, double selfy, double max_power, double *prev_err);
-int ball_in_pincers(struct RoboAI *ai, struct blob *blobs);
-void kick(struct RoboAI *ai, struct blob *blobs);
+void move_to_target(struct RoboAI *ai, double tx, double ty, double selfx, double selfy, double max_power, double *prev_err);
+int ball_in_pincers(struct RoboAI *ai);
+void kick(struct RoboAI *ai);
 #endif

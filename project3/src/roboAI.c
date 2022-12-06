@@ -864,7 +864,7 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
     ai->DPhead = clearDP(ai->DPhead);
     ai->DPhead = addVector(ai->DPhead, selfx, selfy, ai->st.sdx, ai->st.sdy, 100, 0, 255.0, 0);
     // TODO consider moving actions to else clause
-    rotate(ai, blobs, ang, 30.0);
+    rotate(ai, ang, 30.0);
     fprintf(stderr, "raw [%f, %f], correct [%f, %f]\n", ai->st.sdx, ai->st.sdy, ai->st.sdx, ai->st.sdy);
     fprintf(stderr, "goal atan2 heading: %f, robot: %f\n", atan2(face_ball_dx, face_ball_dy) * 180.0 / PI, atan2(ai->st.sdx, ai->st.sdy) * 180.0 / PI);
 
@@ -886,7 +886,7 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
     ai->DPhead = clearDP(ai->DPhead);
     predict_ball_xy(ai, &bx, &by);
     predict_self_xy(ai, &selfx, &selfy);
-    move_to_target(ai, blobs, bx, by, selfx, selfy, 100, &prev_err);
+    move_to_target(ai, bx, by, selfx, selfy, 100, &prev_err);
     double old_dist = dist(old_scx, old_scy, bx, by);
     double curr_dist = dist(selfx, selfy, bx, by);
     fprintf(stderr, "[002] move towards ball    Current dist from ball:%f    Old dist:%f\n", curr_dist, old_dist);
@@ -904,7 +904,7 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
       ai->st.state = 90;
     }
     // if we predict the robot will move past a boundary, move away from it
-    else if (predict_oob(ai, blobs))
+    else if (predict_oob(ai))
     {
       // reset controller state
       prev_err = 0;
@@ -927,7 +927,7 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
     ai->DPhead = clearDP(ai->DPhead);
     predict_ball_xy(ai, &bx, &by);
     predict_self_xy(ai, &selfx, &selfy);
-    move_to_target(ai, blobs, bx, by, selfx, selfy, 30, &prev_err);
+    move_to_target(ai, bx, by, selfx, selfy, 30, &prev_err);
     double old_dist = dist(old_scx, old_scy, bx, by);
     double curr_dist = dist(selfx, selfy, bx, by);
     fprintf(stderr, "[004] positioning ball in pincers    Current dist from ball:%f    Old dist:%f\n", curr_dist, old_dist);
@@ -946,7 +946,7 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
       ai->st.state = 90;
     }
     // if we predict the robot will move past a boundary, move away from it
-    else if (predict_oob(ai, blobs))
+    else if (predict_oob(ai))
     {
       // reset controller state
       prev_err = 0;
@@ -955,7 +955,7 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
     // TODO consider how to wrestle for the ball at this point; right now defense
     // is prioritized
     // Ball is within range
-    else if (ball_in_pincers(ai, blobs))
+    else if (ball_in_pincers(ai))
     {
       // if moving slowly, robot stops when ball is just outside pincers so
       // let it keep driving forward
@@ -995,7 +995,7 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
       ai->st.state = 50;
     }
     // if ball fell out of pincers, get it back
-    else if (ball_in_pincers(ai, blobs) == 0)
+    else if (ball_in_pincers(ai) == 0)
     {
       // TODO stop rotation?
       // skipping aim pincers since it seems to over rotate atm
@@ -1017,7 +1017,7 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
     {
       // TODO try moving forward and turning instead of rotating in place so
       // the ball hopefully stays inside the pincers
-      rotate(ai, blobs, ang, 10.0);
+      rotate(ai, ang, 10.0);
       fprintf(stderr, "goal atan2 heading: %f, robot: %f\n", atan2(face_goal_dx, face_goal_dy) * 180.0 / PI, atan2(ai->st.sdx, ai->st.sdy) * 180.0 / PI);
     }
   }
@@ -1026,23 +1026,15 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
   else if (ai->st.state == 6)
   {
     fprintf(stderr, "[006] kick\n");
-    kick(ai, blobs);
+    kick(ai);
     // if the ball moved, we probably kicked it, or the enemy took it
-    if (ball_in_pincers(ai, blobs) == 0)
+    if (ball_in_pincers(ai) == 0)
     {
       // back to start
       ai->st.state = 1;
     }
   }
-  // TODO
-  else if (ai->st.state == 7)
-  {
-    fprintf(stderr, "[007] back away from defender\n");
-    if (should_defend(ai))
-    {
-      ai->st.state = 50;
-    }
-  }
+
   // DEFENSE...
   else if (ai->st.state == 50)
   {
@@ -1068,7 +1060,7 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
     }
     else
     {
-      move_to_target(ai, blobs, defx, defy, selfx, selfy, POWER_DEF_MAX, &prev_err);
+      move_to_target(ai, defx, defy, selfx, selfy, POWER_DEF_MAX, &prev_err);
     }
   }
   else if (ai->st.state == 51)
@@ -1099,7 +1091,7 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
     }
     else
     {
-      rotate(ai, blobs, ang, 30.0);
+      rotate(ai, ang, 30.0);
     }
 
   }
@@ -1189,7 +1181,7 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
     double ang = signed_rotation(ai->st.sdx, ai->st.sdy, face_ball_dx, face_ball_dy);
     ai->DPhead = clearDP(ai->DPhead);
     ai->DPhead = addVector(ai->DPhead, selfx, selfy, ai->st.sdx, ai->st.sdy, 100, 0, 255.0, 0);
-    rotate(ai, blobs, ang, 30.0);
+    rotate(ai, ang, 30.0);
     fprintf(stderr, "raw [%f, %f], correct [%f, %f]\n", ai->st.sdx, ai->st.sdy, ai->st.sdx, ai->st.sdy);
     fprintf(stderr, "goal atan2 heading: %f, robot: %f\n", atan2(face_ball_dx, face_ball_dy) * 180.0 / PI, atan2(ai->st.sdx, ai->st.sdy) * 180.0 / PI);
     // Facing the ball, within a tolerance
@@ -1204,7 +1196,7 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
     ai->DPhead = clearDP(ai->DPhead);
     predict_ball_xy(ai, &bx, &by);
     predict_self_xy(ai, &selfx, &selfy);
-    move_to_target(ai, blobs, bx, by, selfx, selfy, 100, &prev_err);
+    move_to_target(ai, bx, by, selfx, selfy, 100, &prev_err);
     double old_dist = dist(old_scx, old_scy, bx, by);
     double curr_dist = dist(selfx, selfy, bx, by);
     fprintf(stderr, "[102] move towards ball    Current dist from ball:%f    Old dist:%f\n", curr_dist, old_dist);
@@ -1221,7 +1213,7 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
       ai->st.state = 104;   // for now, skip aim pincers go to position ball in pincers
     }
     // if we predict the robot will move past a boundary, move away from it
-    else if (predict_oob(ai, blobs))
+    else if (predict_oob(ai))
     {
       // reset controller state
       prev_err = 0;
@@ -1235,12 +1227,12 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
     ai->DPhead = clearDP(ai->DPhead);
     predict_ball_xy(ai, &bx, &by);
     predict_self_xy(ai, &selfx, &selfy);
-    move_to_target(ai, blobs, bx, by, selfx, selfy, 30, &prev_err);
+    move_to_target(ai, bx, by, selfx, selfy, 30, &prev_err);
     double old_dist = dist(old_scx, old_scy, bx, by);
     double curr_dist = dist(selfx, selfy, bx, by);
     fprintf(stderr, "[104] positioning ball in pincers    Current dist from ball:%f    Old dist:%f\n", curr_dist, old_dist);
     // Ball is within range
-    if (ball_in_pincers(ai, blobs))
+    if (ball_in_pincers(ai))
     {
       // if moving slowly, robot stops when ball is just outside pincers so
       // let it keep driving forward
@@ -1249,7 +1241,7 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
       ai->st.state = 105;
     }
     // if we predict the robot will move past a boundary, move away from it
-    else if (predict_oob(ai, blobs))
+    else if (predict_oob(ai))
     {
       // reset controller state
       prev_err = 0;
@@ -1283,7 +1275,7 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
     ai->DPhead = addLine(ai->DPhead, goal_x, goal_y, selfx, selfy, 255, 0, 255);
     ang = signed_rotation(ai->st.sdx, ai->st.sdy, face_goal_dx, face_goal_dy);
     // if ball fell out of pincers, get it back
-    if (ball_in_pincers(ai, blobs) == 0)
+    if (ball_in_pincers(ai) == 0)
     {
       // skipping aim pincers since it over rotates
       ai->st.state = 104;
@@ -1303,7 +1295,7 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
     {
       // TODO try moving forward and turning instead of rotating in place so
       // the ball hopefully stays inside the pincers
-      rotate(ai, blobs, ang, 10.0);
+      rotate(ai, ang, 10.0);
       fprintf(stderr, "goal atan2 heading: %f, robot: %f\n", atan2(face_goal_dx, face_goal_dy) * 180.0 / PI, atan2(ai->st.sdx, ai->st.sdy) * 180.0 / PI);
     }
   }
@@ -1311,9 +1303,9 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
   else if (ai->st.state == 106)
   {
     fprintf(stderr, "[106] kick the ball\n");
-    kick(ai, blobs);
+    kick(ai);
     // if the ball moved, we kicked it (probably)
-    if (ball_in_pincers(ai, blobs) == 0)
+    if (ball_in_pincers(ai) == 0)
     {
       ai->st.state = 107;
     }
@@ -1356,7 +1348,7 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
     double ang = signed_rotation(ai->st.sdx, ai->st.sdy, face_ball_dx, face_ball_dy);
     ai->DPhead = clearDP(ai->DPhead);
     ai->DPhead = addVector(ai->DPhead, selfx, selfy, ai->st.sdx, ai->st.sdy, 100, 0, 255.0, 0);
-    rotate(ai, blobs, ang, 30.0);
+    rotate(ai, ang, 30.0);
     fprintf(stderr, "raw [%f, %f], correct [%f, %f]\n", ai->st.sdx, ai->st.sdy, ai->st.sdx, ai->st.sdy);
     fprintf(stderr, "goal atan2 heading: %f, robot: %f\n", atan2(face_ball_dx, face_ball_dy) * 180.0 / PI, atan2(ai->st.sdx, ai->st.sdy) * 180.0 / PI);
     // Facing the ball, within a tolerance
@@ -1371,7 +1363,7 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
     ai->DPhead = clearDP(ai->DPhead);
     predict_ball_xy(ai, &bx, &by);
     predict_self_xy(ai, &selfx, &selfy);
-    move_to_target(ai, blobs, bx, by, selfx, selfy, 100, &prev_err);
+    move_to_target(ai, bx, by, selfx, selfy, 100, &prev_err);
     double old_dist = dist(old_scx, old_scy, bx, by);
     double curr_dist = dist(selfx, selfy, bx, by);
     fprintf(stderr, "[202] move towards ball    Current dist from ball:%f    Old dist:%f\n", curr_dist, old_dist);
@@ -1387,7 +1379,7 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
       ai->st.state = 204;   // skip aim pincers go to position ball in pincers
     }
     // if we predict the robot will move past a boundary, move away from it
-    else if (predict_oob(ai, blobs))
+    else if (predict_oob(ai))
     {
       // reset controller state
       prev_err = 0;
@@ -1401,12 +1393,12 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
     ai->DPhead = clearDP(ai->DPhead);
     predict_ball_xy(ai, &bx, &by);
     predict_self_xy(ai, &selfx, &selfy);
-    move_to_target(ai, blobs, bx, by, selfx, selfy, 30, &prev_err);
+    move_to_target(ai, bx, by, selfx, selfy, 30, &prev_err);
     double old_dist = dist(old_scx, old_scy, bx, by);
     double curr_dist = dist(selfx, selfy, bx, by);
     fprintf(stderr, "[204] positioning ball in pincers    Current dist from ball:%f    Old dist:%f\n", curr_dist, old_dist);
     // Ball is within range
-    if (ball_in_pincers(ai, blobs))
+    if (ball_in_pincers(ai))
     {
       // if moving slowly, robot stops when ball is just outside pincers so
       // let it keep driving forward
@@ -1415,7 +1407,7 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
       ai->st.state = 205;
     }
     // if we predict the robot will move past a boundary, move away from it
-    else if (predict_oob(ai, blobs))
+    else if (predict_oob(ai))
     {
       // reset controller state
       prev_err = 0;
@@ -1434,9 +1426,9 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
   else if (ai->st.state == 205)
   {
     fprintf(stderr, "[205] kick the ball\n");
-    kick(ai, blobs);
+    kick(ai);
     // if the ball moved, we kicked it (probably)
-    if (ball_in_pincers(ai, blobs) == 0)
+    if (ball_in_pincers(ai) == 0)
     {
       ai->st.state = 201;
     }
@@ -1475,32 +1467,6 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
  You will lose marks if AI_main() is cluttered with code that doesn't belong
  there.
 **********************************************************************************/
-void get_ball_xy(struct RoboAI *ai, struct blob *blobs, double *x, double *y)
-{
-  if (ai->st.ball == NULL)
-  {
-    (*x) = ai->st.old_bcx + ai->st.bvx;
-    (*y) = ai->st.old_bcy + ai->st.bvy;
-    return;
-  }
-  (*x) = ai->st.ball->cx;
-  (*y) = ai->st.ball->cy;
-  
-}
-
-void get_self_xy(struct RoboAI *ai, struct blob *blobs, double *x, double *y)
-{
-  if (ai->st.self == NULL)
-  {
-    (*x) = ai->st.old_scx + ai->st.svx;
-    (*y) = ai->st.old_scy + ai->st.svy;
-  }
-  else
-  {
-    (*x) = ai->st.self->cx;
-    (*y) = ai->st.self->cy;
-  }
-}
 
 void predict_ball_xy(struct RoboAI *ai, double *x, double *y)
 {
@@ -1627,7 +1593,7 @@ int predict_collision(struct RoboAI *ai)
   return dist(sx, sy, ox, oy) <= DIST_OPP;
 }
 
-int predict_oob(struct RoboAI *ai, struct blob *blobs)
+int predict_oob(struct RoboAI *ai)
 {
   double x, y;
   predict_self_xy(ai, &x, &y);
@@ -1669,30 +1635,7 @@ void defense_position(int side, double bx, double by, double oppx, double oppy, 
   }
 }
 
-double signed_block_distance(struct RoboAI *ai)
-{
-  double bx, by, selfx, selfy, ball_path_x, ball_path_y;
-  predict_ball_xy(ai, &bx, &by);
-  predict_self_xy(ai, &selfx, &selfy);
-  
-  // Defending left side
-  if (ai->st.side == 0)
-  {
-    ball_path_x = -bx;
-    ball_path_y = sy/2 - by;
-  }
-  // Defending right side
-  else
-  {
-    ball_path_x = sx;
-    ball_path_y = sy/2 - by;
-  }
-
-  return ball_path_y*((selfx - bx)/ball_path_x) - selfy;
-
-}
-
-void rotate(struct RoboAI *ai, struct blob *blobs, double direction, double power)
+void rotate(struct RoboAI *ai, double direction, double power)
 {
   double adj_power = fmin(fmax(power * fabs(direction), ROTATE_MIN_POWER), 100.0);
   if (direction > 0)
@@ -1705,7 +1648,7 @@ void rotate(struct RoboAI *ai, struct blob *blobs, double direction, double powe
   }
 }
 
-void move_to_target(struct RoboAI *ai, struct blob *blobs, double tx, double ty, double selfx, double selfy, double max_power, double *prev_err)
+void move_to_target(struct RoboAI *ai, double tx, double ty, double selfx, double selfy, double max_power, double *prev_err)
 {
   double path_x, path_y, e, de;
   path_x = tx - selfx;
@@ -1742,7 +1685,7 @@ void move_to_target(struct RoboAI *ai, struct blob *blobs, double tx, double ty,
 
 }
 
-int ball_in_pincers(struct RoboAI *ai, struct blob *blobs)
+int ball_in_pincers(struct RoboAI *ai)
 {
   // read multiple times
   const int N = 7;
@@ -1759,7 +1702,7 @@ int ball_in_pincers(struct RoboAI *ai, struct blob *blobs)
   return count > 3;
 }
 
-void kick(struct RoboAI *ai, struct blob *blobs)
+void kick(struct RoboAI *ai)
 {
   BT_drive(RIGHT_MOTOR, LEFT_MOTOR, 100);
   // add a small delay so we drive forward before kicking
